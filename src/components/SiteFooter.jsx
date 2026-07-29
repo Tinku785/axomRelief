@@ -43,7 +43,10 @@ export default function SiteFooter() {
           {helplines.map((h) => (
             <a className="helpline-row" key={h.id} href={toTel(h.phone_number)}>
               <span className="helpline-row__label">{h.label}</span>
-              <span className="helpline-row__phone">{h.phone_number}</span>
+              <span className="helpline-row__phone">
+                <span aria-hidden="true">📞</span>
+                {h.phone_number}
+              </span>
             </a>
           ))}
         </div>

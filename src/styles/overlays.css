@@ -134,17 +134,10 @@
 
 /* ── Turnstile placeholder / widget wrapper ────────────────────────── */
 
-.turnstile-box {
-  border: 1.5px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #FAFBFC;
-  margin-bottom: 14px;
-  min-height: 20px;
-}
+/* No frame, no min-height: with appearance="interaction-only" the widget is
+   usually empty, and an empty bordered box in the form looks broken. It only
+   takes up space on the runs where Cloudflare draws a real challenge. */
+.turnstile-box:not(:empty) { margin-bottom: 14px; }
 
 .pin-readout {
   margin-top: 7px;
@@ -162,6 +155,9 @@
 
 .relief-map {
   position: relative;
+  /* Own stacking context: the badge and expand button sit above Leaflet's
+     panes (z-index 400-700) but must stay below the full-screen map modal. */
+  z-index: 0;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1.5px solid var(--border-light);
@@ -170,8 +166,51 @@
 
 .relief-map__canvas { width: 100%; height: 100%; }
 
-.relief-map--preview { height: 190px; cursor: pointer; }
-.relief-map--preview .relief-map__canvas { pointer-events: none; }
+.relief-map--preview { height: 240px; }
+
+/* Leaflet's own panes sit at z-index 400-700; the overlay has to clear them.
+   pointer-events: none so a tap that lands on the card still reaches the map. */
+.map-badge {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  z-index: 800;
+  pointer-events: none;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  display: grid;
+  gap: 4px;
+}
+
+.map-badge__title { font: 600 12px var(--font); color: var(--text-secondary); }
+
+.map-badge .map-legend {
+  background: none;
+  border: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+
+.map-badge .map-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11.5px var(--font);
+}
+
+.map-badge .relief-pin--dot { width: 9px; height: 9px; border-width: 1.5px; }
+
+/* The OSM credit is a licence condition of the tiles and cannot be dropped,
+   but it can be small and out of the way. */
+.relief-map .leaflet-control-attribution {
+  font: 9px var(--font);
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.7);
+}
 
 .relief-map--placeholder {
   display: grid;
@@ -183,10 +222,13 @@
   color: var(--text-tertiary);
 }
 
+/* Top-right: bottom-right belongs to the OSM credit and the zoom control
+   takes the top-left of the canvas only on the interactive map. */
 .relief-map__expand {
   position: absolute;
+  z-index: 800;
   right: 9px;
-  bottom: 9px;
+  top: 9px;
   padding: 6px 11px;
   border: none;
   border-radius: 999px;

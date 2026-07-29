@@ -87,6 +87,7 @@ img { max-width: 100%; display: block; }
   font-size: 8.5px;
   color: var(--text-tertiary);
   margin-top: 3px;
+  margin-left: 4px;
   white-space: nowrap;
 }
 
@@ -191,6 +192,28 @@ img { max-width: 100%; display: block; }
   border: none;
   display: inline-block;
 }
+
+.pager {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.pager__num, .pager__step {
+  min-width: 34px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: #fff;
+  font: 600 13px var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.pager__num.active { border-color: var(--green); background: var(--green); color: #fff; }
+.pager__step:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Forms ──────────────────────────────────────────────────────────── */
 

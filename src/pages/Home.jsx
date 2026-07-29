@@ -22,21 +22,29 @@ export default function Home() {
   return (
     <div className="screen">
       <div style={{ padding: '14px 14px 0' }}>
-        <div className="section-title" style={{ marginBottom: 10 }}>{t.mapTitle}</div>
-        <div className="map-legend" style={{ marginBottom: 10 }}>
-          <span className="map-legend__item">
-            <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} />
-            {t.legendRequesters} ({requests.length})
-          </span>
-          <span className="map-legend__item">
-            <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} />
-            {t.legendRescuers} ({helpers.length})
-          </span>
+        {/* Same LIVE chip + heading as the news band, so both live sections
+            of the page read as one pattern. */}
+        <div className="news-band__head">
+          <span className="news-band__live">{t.live}</span>
+          <span className="news-band__title">{t.mapTitle}</span>
         </div>
         {!supabaseConfigured && <div className="state-msg">{t.notConfigured}</div>}
         {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
         {supabaseConfigured && !loading && (
-          <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)} />
+          <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)}>
+            <div className="map-badge">
+              <div className="map-legend">
+                <span className="map-legend__item">
+                  <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} />
+                  {t.legendRequesters} ({requests.length})
+                </span>
+                <span className="map-legend__item">
+                  <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} />
+                  {t.legendRescuers} ({helpers.length})
+                </span>
+              </div>
+            </div>
+          </ReliefMap>
         )}
       </div>
 

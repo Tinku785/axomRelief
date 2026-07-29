@@ -10,14 +10,15 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   // Admin screens are a working tool, not the public site.
   const isAdmin = pathname.startsWith('/admin');
 
   // The browser keeps the old scroll position across a route change, so after
   // submitting a long form you land on the confirmation page already scrolled
-  // past the confirmation. One place, covers every route.
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  // past the confirmation. One place, covers every route — except a link that
+  // deliberately targets a section, which scrolls itself.
+  useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname, hash]);
 
   return (
     <div className="app-root">

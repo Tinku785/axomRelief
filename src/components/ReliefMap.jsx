@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  MapContainer, TileLayer, Marker, Popup, useMap,
+  MapContainer, TileLayer, Marker, Popup, useMap, AttributionControl,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -39,20 +39,21 @@ function FitToMarkers({ markers }) {
   // Leaflet measures its container once at mount and never notices later size
   // changes, so the full-screen modal (which mounts, then expands) draws tiles
   // for the old box. Watching the container covers that and phone rotation.
-  useEffect(() => {
-    const box = map.getContainer();
-    const ro = new ResizeObserver(() => map.invalidateSize());
-    ro.observe(box);
-    return () => ro.disconnect();
-  }, [map]);
-
-  useEffect(() => {
+  const fit = () => {
     if (!markers.length) return;
     map.fitBounds(markers.map((m) => [m.position.lat, m.position.lng]), {
       padding: [24, 24],
       maxZoom: MAX_FIT_ZOOM, // one marker alone would fit to a random alley
     });
+  };
+
+  useEffect(() => {
+    const ro = new ResizeObserver(() => { map.invalidateSize(); fit(); });
+    ro.observe(map.getContainer());
+    return () => ro.disconnect();
   }, [map, key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(fit, [map, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }
@@ -99,7 +100,9 @@ function MarkerPopup({ marker }) {
   );
 }
 
-export default function ReliefMap({ markers = [], interactive = true, onExpand }) {
+export default function ReliefMap({
+  markers = [], interactive = true, onExpand, children,
+}) {
   const { t } = useLang();
 
   return (
@@ -109,13 +112,15 @@ export default function ReliefMap({ markers = [], interactive = true, onExpand }
         center={[REGION_CENTER.lat, REGION_CENTER.lng]}
         zoom={REGION_ZOOM}
         zoomControl={interactive}
-        dragging={interactive}
+        // The preview pans and zooms like any other map; only the wheel is off,
+        // so scrolling past it down the page does not get swallowed.
         scrollWheelZoom={interactive}
-        doubleClickZoom={interactive}
-        touchZoom={interactive}
-        keyboard={interactive}
-        attributionControl
+        attributionControl={false}
       >
+        {/* Attribution is a licence condition of the OSM tiles, not decoration:
+            it cannot be removed. prefix={false} drops the Leaflet flag so only
+            the one required credit is left. */}
+        <AttributionControl position="bottomright" prefix={false} />
         <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
         <FitToMarkers markers={markers} />
 
@@ -132,6 +137,8 @@ export default function ReliefMap({ markers = [], interactive = true, onExpand }
           </Marker>
         ))}
       </MapContainer>
+
+      {children}
 
       {!interactive && (
         <button type="button" className="relief-map__expand" onClick={onExpand}>

@@ -12,7 +12,7 @@ export default function RequestDone() {
         <div style={{ font: '800 20px system-ui', color: 'var(--text)' }}>{t.doneTitle}</div>
         <div style={{ font: '14px/1.6 system-ui', color: 'var(--text-secondary)', margin: '8px 0 26px' }}>{t.doneBody}</div>
       </div>
-      <button className="btn btn-primary" style={{ marginBottom: 10 }} onClick={() => navigate('/helping')}>
+      <button className="btn btn-primary" style={{ marginBottom: 10 }} onClick={() => navigate('/helping#list')}>
         {t.viewAll}
       </button>
       <button className="btn btn-outline-green" onClick={() => navigate('/')}>

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-// Cloudflare's published "always passes" test key — used only when no real
-// site key is configured, so the form still works in local development.
-const DEV_FALLBACK_SITE_KEY = '1x00000000000000000000AA';
+// Cloudflare's published "always passes, invisible" test key. The visible
+// "…AA" twin prints a "For testing only" banner into the form.
+const DEV_FALLBACK_SITE_KEY = '1x00000000000000000000BB';
 
 let scriptPromise = null;
 function loadTurnstileScript() {
@@ -26,7 +26,13 @@ export default function TurnstileWidget({ onToken, onExpire }) {
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const [errorCode, setErrorCode] = useState('');
-  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || DEV_FALLBACK_SITE_KEY;
+  // Error 110200 is Cloudflare rejecting the *hostname*, not the key. A real
+  // key only works on the hostnames listed on the widget, and localhost is not
+  // one of them unless you add it — so on localhost always use the test key.
+  // Any 110200 left in production means the deployed domain is missing from
+  // that list; add it in the Turnstile dashboard.
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+  const siteKey = (!isLocal && import.meta.env.VITE_TURNSTILE_SITE_KEY) || DEV_FALLBACK_SITE_KEY;
 
   // If Turnstile itself cannot load — bad hostname config, blocked script,
   // captive wifi — hand out a sentinel token rather than locking the form.
@@ -44,6 +50,10 @@ export default function TurnstileWidget({ onToken, onExpire }) {
       if (cancelled || !containerRef.current || !window.turnstile) return;
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
+        // Draw nothing unless Cloudflare actually needs the user to click
+        // something. A relief form should not ask a flood victim to prove
+        // they are human when the risk score already says so.
+        appearance: 'interaction-only',
         callback: (token) => { setErrorCode(''); onToken?.(token); },
         'expired-callback': () => onExpire?.(),
         'error-callback': degrade,
@@ -58,15 +68,8 @@ export default function TurnstileWidget({ onToken, onExpire }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey]);
 
-  return (
-    <div className="turnstile-box">
-      <div ref={containerRef} />
-      {errorCode && (
-        <div className="turnstile-box__error">
-          Verification is unavailable right now ({errorCode}), so it has been skipped.
-          You can still submit this form.
-        </div>
-      )}
-    </div>
-  );
+  // No wrapper and no error text: the check is invisible, and a failure is
+  // already handled by degrade() handing out a token. errorCode stays as a
+  // console-visible signal only.
+  return <div className="turnstile-box" ref={containerRef} data-error={errorCode || undefined} />;
 }

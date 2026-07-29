@@ -10,6 +10,7 @@ import { submitRequest } from '../api/requests';
 import { supabaseConfigured } from '../supabaseClient';
 import TurnstileWidget from '../components/TurnstileWidget';
 import HelperCard from '../components/HelperCard';
+import Pager, { pageSlice } from '../components/Pager';
 
 const emptyForm = {
   name: '', contact: '', location: '', district: DISTRICTS[0],
@@ -26,6 +27,7 @@ export default function RequestForm() {
   const districtHelpers = helpers.filter(
     (h) => !h.districts_covered?.length || h.districts_covered.includes(form.district)
   );
+  const [helperPage, setHelperPage] = useState(0);
   const [company, setCompany] = useState(''); // honeypot
   const [turnstileToken, setTurnstileToken] = useState('');
   const [geoBusy, setGeoBusy] = useState(false);
@@ -158,7 +160,12 @@ export default function RequestForm() {
         </label>
         <label className="field">
           <div className="field__label">{t.district}</div>
-          <select className="input" value={form.district} onChange={set('district')}>
+          <select
+            className="input"
+            value={form.district}
+            // A different district is a different rescuer list, so start it over.
+            onChange={(e) => { set('district')(e); setHelperPage(0); }}
+          >
             {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </label>
@@ -297,7 +304,10 @@ export default function RequestForm() {
         <div className="stack gap-9" style={{ marginTop: 11 }}>
           {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
           {!loading && !districtHelpers.length && <div className="state-msg">{t.noHelpersHere}</div>}
-          {districtHelpers.map((h) => <HelperCard key={h.id} helper={h} variant="compact" />)}
+          {pageSlice(districtHelpers, helperPage).map((h) => (
+            <HelperCard key={h.id} helper={h} variant="compact" />
+          ))}
+          <Pager total={districtHelpers.length} page={helperPage} onPage={setHelperPage} />
         </div>
       </div>
     </div>

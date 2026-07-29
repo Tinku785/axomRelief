@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
 import { needLabel, DISTRICTS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER } from '../utils/priority';
@@ -13,12 +13,14 @@ import { timeAgo, toTel } from '../utils/time';
 import ReliefMap from '../components/ReliefMap';
 import MapModal from '../components/MapModal';
 import TurnstileWidget from '../components/TurnstileWidget';
+import Pager, { pageSlice } from '../components/Pager';
 
 const emptyHelperForm = { name: '', contact: '', districts: [], areas: '', given: '', boat: null };
 
 export default function Helping() {
   const { lang, t } = useLang();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { requests, helpers, loading, refetch } = useReliefData();
 
   const [hf, setHf] = useState(emptyHelperForm);
@@ -27,11 +29,23 @@ export default function Helping() {
   const [registering, setRegistering] = useState(false);
 
   const [fPrio, setFPrio] = useState('All');
+  const [page, setPage] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
   const [company, setCompany] = useState(''); // honeypot
   const [turnstileToken, setTurnstileToken] = useState('');
 
   const setField = (key) => (e) => setHf((f) => ({ ...f, [key]: e.target.value }));
+
+  // Arriving from "See who is helping" should land on the list, not on the
+  // rescuer form. React Router does not scroll to a hash on its own, and the
+  // list only exists once the data has loaded.
+  useEffect(() => {
+    if (hash !== '#list' || loading) return;
+    document.getElementById('list')?.scrollIntoView();
+  }, [hash, loading]);
+
+  // A new filter is a new list, so page 3 of the old one is meaningless.
+  const pickPrio = (v) => { setFPrio(v); setPage(0); };
 
   const toggleDistrict = (d) => {
     setHf((f) => ({
@@ -79,6 +93,7 @@ export default function Helping() {
   };
 
   const visibleRequests = fPrio === 'All' ? requests : requests.filter((r) => r.priority === fPrio);
+  const pageRequests = pageSlice(visibleRequests, page);
 
   const markers = [
     ...requestsToMarkers(requests, PRIORITY_META),
@@ -170,17 +185,20 @@ export default function Helping() {
       </div>
 
       <div style={{ padding: '20px 14px 0' }}>
-        <div className="section-title" style={{ marginBottom: 10 }}>{t.mapTitle}</div>
-        <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)} />
+        <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)}>
+          <div className="map-badge">
+            <div className="map-badge__title">{t.mapTitle}</div>
+          </div>
+        </ReliefMap>
       </div>
 
-      <div style={{ padding: '20px 14px 0' }}>
+      <div id="list" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
         <div className="section-heading">
           <div className="section-title">{t.peopleNeedHelp}</div>
           <div className="section-meta">{visibleRequests.length}</div>
         </div>
         <div className="chip-row" style={{ marginTop: 10 }}>
-          <button className={`chip ${fPrio === 'All' ? 'active' : ''}`} onClick={() => setFPrio('All')}>
+          <button className={`chip ${fPrio === 'All' ? 'active' : ''}`} onClick={() => pickPrio('All')}>
             {lang ? 'সকলো' : 'All'}
           </button>
           {PRIORITY_ORDER.map((key) => {
@@ -191,7 +209,7 @@ export default function Helping() {
                 key={key}
                 className="chip"
                 style={on ? { borderColor: p.color, background: p.color, color: '#fff' } : undefined}
-                onClick={() => setFPrio(key)}
+                onClick={() => pickPrio(key)}
               >
                 {p.shape} {t[key]}
               </button>
@@ -206,7 +224,7 @@ export default function Helping() {
         {supabaseConfigured && !loading && !visibleRequests.length && (
           <div className="state-msg">{t.noneYet}</div>
         )}
-        {supabaseConfigured && !loading && visibleRequests.map((r) => {
+        {supabaseConfigured && !loading && pageRequests.map((r) => {
           const p = PRIORITY_META[r.priority];
           return (
             <div key={r.id} className="request-card" style={{ borderLeft: `5px solid ${p.color}` }}>
@@ -230,6 +248,7 @@ export default function Helping() {
             </div>
           );
         })}
+        <Pager total={visibleRequests.length} page={page} onPage={setPage} />
       </div>
 
       {mapOpen && <MapModal markers={markers} onClose={() => setMapOpen(false)} />}
