@@ -1,0 +1,476 @@
+* { box-sizing: border-box; }
+
+/* min-height, not height: a fixed 100% locks the document to the visual
+   viewport on mobile browsers, so anything below the fold (the footer) gets
+   clipped instead of scrolled to. */
+html, body, #root { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  font-family: var(--font);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--green); text-decoration: none; }
+a:hover { color: var(--green-hover); }
+
+input, select, textarea, button { font-family: inherit; }
+
+button { touch-action: manipulation; }
+
+img { max-width: 100%; display: block; }
+
+/* ── App shell — centred mobile-width column on any screen size ───────── */
+
+.app-root {
+  min-height: 100vh;
+  min-height: 100dvh; /* dvh excludes the mobile URL bar; vh line is the fallback */
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: var(--shell-max-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--surface);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 0 1px var(--border-lighter);
+}
+
+.screen { flex: 1; }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid var(--border-lighter);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.app-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.app-header__mark {
+  width: 33px;
+  height: 33px;
+  flex: none;
+}
+
+.app-header__wordmark {
+  height: 15px;
+  width: auto;
+  display: block;
+}
+
+.app-header__tagline {
+  font-size: 8.5px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.lang-toggle {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  flex: none;
+}
+
+.lang-toggle button {
+  padding: 6px 9px;
+  border: none;
+  background: #fff;
+  color: var(--text-secondary);
+  font: 700 11px var(--font);
+  cursor: pointer;
+}
+
+.lang-toggle button.active {
+  background: var(--green);
+  color: #fff;
+}
+
+.location-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: var(--green-bg);
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.location-strip:hover { background: var(--green-bg-hover); }
+
+.location-strip__label {
+  flex: 1;
+  font: 600 13px var(--font);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-strip__change {
+  font: 600 11.5px var(--font);
+  color: var(--orange);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font: 700 15px var(--font);
+  cursor: pointer;
+  border: none;
+  padding: 15px;
+  width: 100%;
+  text-align: center;
+}
+
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-primary { background: var(--orange); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--orange-hover); }
+
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover:not(:disabled) { background: var(--green-hover); }
+
+.btn-outline-green {
+  background: #fff;
+  color: var(--green);
+  border: 1.5px solid var(--green);
+}
+
+.btn-outline-orange {
+  background: #fff;
+  color: var(--orange);
+  border: 1.5px solid var(--orange);
+}
+
+.btn-dashed-green {
+  background: #fff;
+  color: var(--green);
+  border: 1.5px dashed var(--green);
+  font: 600 14px var(--font);
+}
+
+.btn-back {
+  padding: 14px 14px 4px;
+  font: 600 13.5px var(--font);
+  color: var(--green);
+  cursor: pointer;
+  background: none;
+  border: none;
+  display: inline-block;
+}
+
+/* ── Forms ──────────────────────────────────────────────────────────── */
+
+.field { display: block; margin-bottom: 14px; }
+.field__label {
+  font: 600 13.5px var(--font);
+  color: var(--text);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.input, select.input, textarea.input {
+  width: 100%;
+  padding: 13px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font: 15px var(--font);
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--text);
+}
+
+textarea.input { resize: vertical; }
+
+.toggle-row { display: flex; gap: 9px; }
+
+.toggle-btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font: 700 14px var(--font);
+  cursor: pointer;
+}
+
+.toggle-btn.on-green { border-color: var(--green); background: var(--green); color: #fff; }
+.toggle-btn.on-neutral { border-color: var(--text-secondary); background: var(--text-secondary); color: #fff; }
+
+.form-error {
+  padding: 11px 12px;
+  background: var(--critical-bg);
+  border-radius: var(--radius-md);
+  font: 600 13px var(--font);
+  color: var(--critical);
+  margin-bottom: 14px;
+}
+
+.honeypot-field {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ── Chips ──────────────────────────────────────────────────────────── */
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font: 600 13.5px var(--font);
+  cursor: pointer;
+}
+
+.chip.active { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+
+/* ── Priority radio rows ────────────────────────────────────────────── */
+
+.prio-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.prio-option input { margin-top: 3px; }
+.prio-option__label { font: 700 14.5px var(--font); }
+.prio-option__desc { font: 12.5px/1.5 var(--font); color: var(--text-secondary); }
+
+/* ── Cards (home placards) ─────────────────────────────────────────── */
+
+.placard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 14px 0;
+}
+
+.placard {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 14px 16px;
+  cursor: pointer;
+  /* Fixed height, not aspect-ratio: on a wide screen a square card would be
+     as tall as the column is wide, which pushes the map below the fold. */
+  height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: none;
+  width: 100%;
+}
+
+.placard-green { border: 1.5px solid var(--green); }
+.placard-green:hover { background: var(--green-bg); }
+.placard-orange { border: 1.5px solid var(--orange); }
+.placard-orange:hover { background: var(--orange-bg); }
+
+.placard__icon { width: 56px; height: 56px; object-fit: contain; }
+.placard__title-green { font: 700 16px/1.25 var(--font); color: var(--green); }
+.placard__title-orange { font: 700 16px/1.25 var(--font); color: var(--orange); }
+
+/* ── Section headings ───────────────────────────────────────────────── */
+
+.page-title { font: 700 20px/1.3 var(--font); color: var(--text); }
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-title { font: 800 15.5px var(--font); color: var(--text); }
+.section-meta { font: 11.5px var(--font); color: var(--text-tertiary); }
+.section-hint { font: 12px/1.5 var(--font); color: var(--text-tertiary); margin-top: 2px; }
+
+/* ── Helper / rescuer cards ─────────────────────────────────────────── */
+
+.helper-card {
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 12px 13px;
+}
+
+.helper-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.helper-card__name { font: 700 14.5px var(--font); color: var(--text); }
+.helper-card__meta { font: 12.5px/1.5 var(--font); color: var(--text-secondary); margin-top: 2px; }
+
+.badge {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font: 700 11px var(--font);
+  white-space: nowrap;
+}
+
+.badge-boat-yes { background: var(--green-bg); color: var(--green); }
+.badge-boat-no { background: #F2F5F8; color: var(--text-tertiary); }
+
+.helper-card__call {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--orange);
+  color: #fff;
+  border-radius: 8px;
+  font: 700 13px var(--font);
+}
+
+.helper-card__call:hover { color: #fff; background: var(--orange-hover); }
+
+.helper-card__call--outline {
+  background: #fff;
+  border: 1.5px solid var(--orange);
+  color: var(--orange);
+}
+.helper-card__call--outline:hover { background: var(--orange-bg); color: var(--orange); }
+
+/* ── Request cards (I Am Helping) ──────────────────────────────────── */
+
+.request-card {
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 13px 14px;
+}
+
+.request-card--en-route { border-color: #CCE9CC; }
+
+.request-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.request-card__name { font: 700 15px var(--font); color: var(--text); }
+.request-card__line { font: 13px/1.6 var(--font); color: var(--text-secondary); }
+.request-card__needs { font: 13px/1.6 var(--font); color: var(--text); }
+.request-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+.request-card__time { font: 11.5px var(--font); color: var(--text-tertiary); }
+.request-card__call { font: 700 13px var(--font); color: var(--text-secondary); }
+
+.en-route-banner {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--green-bg);
+  border-radius: var(--radius-md);
+  font: 600 12.5px/1.5 var(--font);
+  color: var(--green-hover);
+}
+
+/* ── Empty / loading / error states ────────────────────────────────── */
+
+.state-msg {
+  padding: 24px 14px;
+  text-align: center;
+  font: 13px/1.6 var(--font);
+  color: var(--text-tertiary);
+}
+
+.state-msg--error { color: var(--critical); }
+
+/* ── Utility ────────────────────────────────────────────────────────── */
+
+.stack { display: flex; flex-direction: column; }
+.gap-8 { gap: 8px; }
+.gap-9 { gap: 9px; }
+.gap-10 { gap: 10px; }
+.gap-14 { gap: 14px; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────
+   The shell is a 480px phone column by default. On wider viewports it grows
+   and the two-up sections spread out, so a desktop browser is not just a
+   phone screenshot floating in whitespace.
+   ──────────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 700px) {
+  .app-root { background: var(--surface-alt, #EEF1F4); }
+
+  .app-shell {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .screen--narrow { max-width: 420px; margin: 0 auto; }
+
+  .relief-map--preview { height: 260px; }
+}
+
+@media (min-width: 1024px) {
+  .app-shell { max-width: 960px; }
+
+  .relief-map--preview { height: 320px; }
+
+  .admin-map { height: 66vh; }
+}
+
+/* Phones narrower than the iPhone SE still need the chips and toggles to
+   wrap rather than overflow horizontally. */
+@media (max-width: 380px) {
+  .chip-row { gap: 6px; }
+  .request-card__foot { flex-wrap: wrap; gap: 8px; }
+  .map-modal__bar { gap: 8px; }
+  .map-modal__bar .map-legend { width: 100%; margin-left: 0; }
+}

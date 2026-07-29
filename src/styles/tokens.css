@@ -1,0 +1,48 @@
+:root {
+  /* Muted, low-saturation palette: the screen is read on a phone in daylight
+     by someone in distress, so colour carries meaning (priority, who is who)
+     and nothing else. */
+  --page-bg: #F3F5F7;
+  --surface: #FFFFFF;
+
+  --text: #1B2027;
+  --text-secondary: #5C6672;
+  --text-tertiary: #8B949F;
+  --border: #D3DAE1;
+  --border-light: #E6EAEE;
+  --border-lighter: #F0F2F5;
+
+  --green: #2E7D4A;
+  --green-hover: #23603A;
+  --green-bg: #EEF5F0;
+  --green-bg-hover: #E1EDE6;
+
+  --orange: #C0632A;
+  --orange-hover: #9A4E20;
+  --orange-bg: #FAF3EC;
+  --orange-border: #EADCCB;
+
+  --critical: #B23A3A;
+  --critical-bg: #F9EFEF;
+  --critical-border: #E8D2D2;
+
+  --urgent: #C0632A;
+  --urgent-bg: #FAF3EC;
+
+  --needed: #94742A;
+  --needed-bg: #F8F3E4;
+
+  --footer-bg: #232A2E;
+  --footer-row: #2C3438;
+  --footer-link: #E5A06A;
+
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --shell-max-width: 480px;
+
+  --font: system-ui, -apple-system, "Noto Sans", "Noto Sans Bengali", sans-serif;
+}

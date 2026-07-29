@@ -1,0 +1,22 @@
+export function timeAgo(dateInput, lang) {
+  const then = new Date(dateInput).getTime();
+  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (minutes < 60) return minutes + (lang ? ' মিনিট আগত' : ' min ago');
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours + (lang ? ' ঘণ্টা আগত' : ' hr ago');
+  return Math.round(hours / 24) + (lang ? ' দিন আগত' : ' d ago');
+}
+
+// "29 Jul 2026, 5:11 pm" — the news band needs a real date, not just "3 hr ago",
+// so a reader can tell whether an update is from this flood or the last one.
+export function formatDateTime(dateInput, lang) {
+  const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString(lang ? 'as-IN' : 'en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+export function toTel(phone) {
+  return 'tel:' + String(phone || '').replace(/[^0-9]/g, '');
+}

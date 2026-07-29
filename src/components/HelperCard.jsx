@@ -1,0 +1,36 @@
+import { useLang } from '../context/LangContext';
+import { toTel } from '../utils/time';
+
+// variant "full" — used on Home (bold name, stacked meta lines, filled call button)
+// variant "compact" — used at the bottom of the Request form (smaller name, one meta line, outline call button)
+export default function HelperCard({ helper, variant = 'full' }) {
+  const { lang, t } = useLang();
+  const boatLabel = helper.boat_available ? (lang ? 'নাও আছে' : 'Boat') : (lang ? 'পদপথ' : 'On foot');
+
+  return (
+    <div className="helper-card">
+      <div className="helper-card__row">
+        <div style={{ minWidth: 0 }}>
+          <div className="helper-card__name" style={variant === 'compact' ? { font: '700 14px system-ui' } : undefined}>
+            {helper.name}
+          </div>
+          {variant === 'compact' ? (
+            <div className="helper-card__meta">{helper.areas_covered} · {helper.what_given}</div>
+          ) : (
+            <>
+              <div className="helper-card__meta">{helper.areas_covered}</div>
+              <div className="helper-card__meta">{helper.what_given}</div>
+            </>
+          )}
+        </div>
+        <span className={`badge ${helper.boat_available ? 'badge-boat-yes' : 'badge-boat-no'}`}>{boatLabel}</span>
+      </div>
+      <a
+        className={`helper-card__call ${variant === 'compact' ? 'helper-card__call--outline' : ''}`}
+        href={toTel(helper.contact_number)}
+      >
+        {t.callWord} {helper.contact_number}
+      </a>
+    </div>
+  );
+}
