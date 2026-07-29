@@ -21,18 +21,7 @@ export default function Home() {
 
   return (
     <div className="screen">
-      <div className="placard-grid">
-        <button className="placard placard-green" onClick={() => navigate('/request')}>
-          <img className="placard__icon" src={iconWantHelp} alt="" width="64" height="64" />
-          <span className="placard__title-green">{t.wantHelp}</span>
-        </button>
-        <button className="placard placard-orange" onClick={() => navigate('/helping')}>
-          <img className="placard__icon" src={iconAmHelping} alt="" width="64" height="64" />
-          <span className="placard__title-orange">{t.amHelping}</span>
-        </button>
-      </div>
-
-      <div style={{ padding: '22px 14px 0' }}>
+      <div style={{ padding: '14px 14px 0' }}>
         <div className="section-title" style={{ marginBottom: 10 }}>{t.mapTitle}</div>
         <div className="map-legend" style={{ marginBottom: 10 }}>
           <span className="map-legend__item">
@@ -49,6 +38,17 @@ export default function Home() {
         {supabaseConfigured && !loading && (
           <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)} />
         )}
+      </div>
+
+      <div className="placard-grid" style={{ marginTop: 18 }}>
+        <button className="placard placard-green" onClick={() => navigate('/request')}>
+          <img className="placard__icon" src={iconWantHelp} alt="" width="64" height="64" />
+          <span className="placard__title-green">{t.wantHelp}</span>
+        </button>
+        <button className="placard placard-orange" onClick={() => navigate('/helping')}>
+          <img className="placard__icon" src={iconAmHelping} alt="" width="64" height="64" />
+          <span className="placard__title-orange">{t.amHelping}</span>
+        </button>
       </div>
 
       {mapOpen && <MapModal markers={markers} onClose={() => setMapOpen(false)} />}

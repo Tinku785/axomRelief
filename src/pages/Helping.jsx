@@ -65,6 +65,10 @@ export default function Helping() {
     try {
       await registerHelper(hf);
       setRegistered(true);
+      // No route change here, so App's scroll reset does not fire: the
+      // "Registered" confirmation sits at the top, the submit button at the
+      // bottom.
+      window.scrollTo(0, 0);
       await refetch();
     } catch (err) {
       setHelperError(isRateLimited(err) ? t.rateLimited
