@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { jitterAroundDistrict } from '../utils/mapGeo';
-import { normalizePhone } from '../utils/phone';
+import { cleanContacts } from '../utils/phone';
 
 const TABLE = 'requests';
 
@@ -29,13 +29,15 @@ export async function submitRequest(form) {
     ? { lat: form.lat, lng: form.lng }
     : jitterAroundDistrict(form.district);
   const needs = form.needs.filter((n) => n !== 'other');
+  const [primary, ...extra] = cleanContacts(form.contacts);
   const { data, error } = await supabase
     .from(TABLE)
     .insert({
       name: form.name,
       district: form.district,
       location: form.location,
-      contact_number: normalizePhone(form.contact),
+      contact_number: primary,
+      contact_numbers: extra,
       num_people: form.numPeople ? Number(form.numPeople) : 1,
       needs,
       needs_other: form.needs.includes('other') ? form.other || null : null,

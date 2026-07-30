@@ -32,7 +32,7 @@ function pinIcon(color) {
 // A fixed region zoom either shows the whole of upper Assam (pins as specks) or
 // crops most pins out. Framing the actual pins is the only zoom that is right
 // for both a two-pin day and a fifty-pin day.
-function FitToMarkers({ markers }) {
+function FitToMarkers({ markers, focus }) {
   const map = useMap();
   const key = markers.map((m) => m.id).join(',');
 
@@ -40,7 +40,9 @@ function FitToMarkers({ markers }) {
   // changes, so the full-screen modal (which mounts, then expands) draws tiles
   // for the old box. Watching the container covers that and phone rotation.
   const fit = () => {
-    if (!markers.length) return;
+    // Once a row is selected the user asked for that one pin; re-fitting to all
+    // of them would yank the map straight back out.
+    if (focus || !markers.length) return;
     map.fitBounds(markers.map((m) => [m.position.lat, m.position.lng]), {
       padding: [24, 24],
       maxZoom: MAX_FIT_ZOOM, // one marker alone would fit to a random alley
@@ -51,10 +53,25 @@ function FitToMarkers({ markers }) {
     const ro = new ResizeObserver(() => { map.invalidateSize(); fit(); });
     ro.observe(map.getContainer());
     return () => ro.disconnect();
-  }, [map, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, key, focus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(fit, [map, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  return null;
+}
+
+// "Which area is this person in?" is unanswerable from a map framed on every
+// pin at once, so picking a row flies the map to that one pin.
+const FOCUS_ZOOM = 14;
+
+function FocusOnPoint({ focus }) {
+  const map = useMap();
+  useEffect(() => {
+    if (focus) map.flyTo([focus.lat, focus.lng], FOCUS_ZOOM);
+    // Deliberately keyed on object identity, not lat/lng: the caller stores
+    // focus in state and sets a fresh object per click, so tapping the same
+    // row again re-centres a map the user has since panned away.
+  }, [map, focus]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
@@ -85,11 +102,11 @@ function MarkerPopup({ marker }) {
       </span>
       <div className="map-info__title">{marker.title}</div>
       {marker.subtitle && <div className="map-info__sub">{marker.subtitle}</div>}
-      {marker.phone && (
-        <a className="map-info__call" href={toTel(marker.phone)}>
-          {t.callNow} {marker.phone}
+      {marker.phones?.map((p) => (
+        <a key={p} className="map-info__call" href={toTel(p)}>
+          {t.callNow} {p}
         </a>
-      )}
+      ))}
       {marker.kind !== 'helper' && (
         <div className="map-info__coords">
           <code>{coords}</code>
@@ -101,7 +118,7 @@ function MarkerPopup({ marker }) {
 }
 
 export default function ReliefMap({
-  markers = [], interactive = true, onExpand, children,
+  markers = [], interactive = true, onExpand, focus = null, children,
 }) {
   const { t } = useLang();
 
@@ -122,7 +139,8 @@ export default function ReliefMap({
             the one required credit is left. */}
         <AttributionControl position="bottomright" prefix={false} />
         <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
-        <FitToMarkers markers={markers} />
+        <FitToMarkers markers={markers} focus={focus} />
+        <FocusOnPoint focus={focus} />
 
         {markers.map((m) => (
           <Marker

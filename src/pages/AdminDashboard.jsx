@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useFooterData } from '../context/FooterDataContext';
 import { needLabel } from '../i18n/strings';
 import { PRIORITY_META } from '../utils/priority';
-import { timeAgo, formatDateTime } from '../utils/time';
+import { timeAgo, formatDateTime, toTel } from '../utils/time';
+import { phoneList } from '../utils/phone';
 import {
   fetchAllRequestsForAdmin, setRequestHidden, deleteRequest,
 } from '../api/requests';
@@ -58,6 +59,21 @@ export default function AdminDashboard() {
   const logout = async () => {
     await signOut();
     navigate('/');
+  };
+
+  // A shared GPS pin is the exact spot; anything else is only the scattered
+  // district-centre placeholder, and saying so stops a dispatcher trusting it.
+  const coordsCell = (r) => {
+    if (r.lat == null) return '—';
+    const coords = `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`;
+    return (
+      <>
+        <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`} target="_blank" rel="noreferrer">
+          {coords}
+        </a>
+        {r.has_live_location ? ' · shared GPS pin' : ' · approximate (district centre)'}
+      </>
+    );
   };
 
   const needsText = (r) => {
@@ -131,9 +147,38 @@ export default function AdminDashboard() {
                   <span className="admin-row__prio" style={{ color: p.color }}>{p.shape} {r.priority}</span>
                 </div>
                 <div className="admin-row__meta">
-                  {r.district} · {r.num_people} people · {needsText(r)} · {timeAgo(r.created_at, lang)}
+                  {timeAgo(r.created_at, lang)} · {formatDateTime(r.created_at, lang)}
                   {r.hidden ? ' · HIDDEN' : ''}
                 </div>
+                <dl className="admin-detail">
+                  <dt>Phone</dt>
+                  <dd>
+                    {phoneList(r).map((num, i) => (
+                      <span key={num}>{i ? ' · ' : ''}<a href={toTel(num)}>{num}</a></span>
+                    ))}
+                  </dd>
+                  <dt>Address</dt>
+                  <dd>{r.location}, {r.district}</dd>
+                  <dt>Coordinates</dt>
+                  <dd>{coordsCell(r)}</dd>
+                  <dt>People</dt>
+                  <dd>{r.num_people}</dd>
+                  <dt>Needs</dt>
+                  <dd>{needsText(r) || '—'}</dd>
+                  <dt>Boat</dt>
+                  <dd>{r.boat_required ? 'Required' : 'Not required'}</dd>
+                  {r.notes && <><dt>Notes</dt><dd>{r.notes}</dd></>}
+                  {r.helper_name && (
+                    <>
+                      <dt>Rescuer</dt>
+                      <dd>
+                        {r.helper_name}
+                        {r.helper_from ? ` · from ${r.helper_from}` : ''}
+                        {r.helper_eta_minutes != null ? ` · ETA ${r.helper_eta_minutes} min` : ''}
+                      </dd>
+                    </>
+                  )}
+                </dl>
                 <div className="admin-row__actions">
                   <button
                     className="admin-btn"
@@ -158,13 +203,27 @@ export default function AdminDashboard() {
         <div className="admin-panel">
           {helpers.map((h) => (
             <div key={h.id} className={`admin-row ${h.hidden ? 'admin-row--hidden' : ''}`}>
-              <div className="admin-row__name">{h.name} <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-secondary)' }}>· {h.contact_number}</span></div>
+              <div className="admin-row__name">{h.name}</div>
               <div className="admin-row__meta">
-                {(h.districts_covered?.length ? h.districts_covered.join(', ') : '—')}
-                {h.areas_text ? ` · ${h.areas_text}` : ''}
-                {h.what_given ? ` · ${h.what_given}` : ''}
-                {h.hidden ? ' · HIDDEN' : ''}
+                {timeAgo(h.created_at, lang)}{h.hidden ? ' · HIDDEN' : ''}
               </div>
+              <dl className="admin-detail">
+                <dt>Phone</dt>
+                <dd>
+                  {phoneList(h).map((num, i) => (
+                    <span key={num}>{i ? ' · ' : ''}<a href={toTel(num)}>{num}</a></span>
+                  ))}
+                </dd>
+                <dt>Districts</dt>
+                <dd>{h.districts_covered?.length ? h.districts_covered.join(', ') : '—'}</dd>
+                <dt>Areas</dt>
+                <dd>{h.areas_text || '—'}</dd>
+                <dt>Supplies</dt>
+                <dd>{h.what_given || '—'}</dd>
+                <dt>Boat</dt>
+                <dd>{h.boat_available ? 'Available' : 'No'}</dd>
+                {h.notes && <><dt>Notes</dt><dd>{h.notes}</dd></>}
+              </dl>
               <div className="admin-row__actions">
                 <button
                   className="admin-btn"

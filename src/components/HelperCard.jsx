@@ -1,5 +1,6 @@
 import { useLang } from '../context/LangContext';
 import { toTel } from '../utils/time';
+import { phoneList } from '../utils/phone';
 
 // variant "full" — used on Home (bold name, stacked meta lines, filled call button)
 // variant "compact" — used at the bottom of the Request form (smaller name, one meta line, outline call button)
@@ -25,12 +26,16 @@ export default function HelperCard({ helper, variant = 'full' }) {
         </div>
         <span className={`badge ${helper.boat_available ? 'badge-boat-yes' : 'badge-boat-no'}`}>{boatLabel}</span>
       </div>
-      <a
-        className={`helper-card__call ${variant === 'compact' ? 'helper-card__call--outline' : ''}`}
-        href={toTel(helper.contact_number)}
-      >
-        {t.callWord} {helper.contact_number}
-      </a>
+      {helper.notes && <div className="request-card__notes">{helper.notes}</div>}
+      {phoneList(helper).map((p) => (
+        <a
+          key={p}
+          className={`helper-card__call ${variant === 'compact' ? 'helper-card__call--outline' : ''}`}
+          href={toTel(p)}
+        >
+          {t.callWord} {p}
+        </a>
+      ))}
     </div>
   );
 }

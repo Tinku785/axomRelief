@@ -1,3 +1,6 @@
+// .js extension so `node src/utils/selfcheck.js` resolves this too.
+import { phoneList } from './phone.js';
+
 // Real coordinates for the three districts the helpline covers.
 export const DISTRICT_CENTERS = {
   Sivasagar: { lat: 26.9855, lng: 94.6376 },
@@ -31,7 +34,7 @@ export function requestsToMarkers(requests, priorityMeta) {
     position: { lat: r.lat, lng: r.lng },
     title: r.name,
     subtitle: `${r.location} · ${r.district} · ${r.num_people} people`,
-    phone: r.contact_number,
+    phones: phoneList(r),
     color: priorityMeta?.[r.priority]?.color,
     kind: 'request',
   }));
@@ -43,7 +46,7 @@ export function helpersToMarkers(helpers) {
     position: { lat: h.lat, lng: h.lng },
     title: h.name,
     subtitle: (h.districts_covered?.length ? h.districts_covered.join(', ') : h.areas_text) || '',
-    phone: h.contact_number,
+    phones: phoneList(h),
     kind: 'helper',
   }));
 }

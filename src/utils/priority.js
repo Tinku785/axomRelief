@@ -31,3 +31,20 @@ export const PRIORITY_META = {
 export const PRIORITY_ORDER = ['critical', 'urgent', 'needed'];
 
 export const RESCUER_MARK = { color: '#2E7D4A', shape: '✔' };
+
+// How many of a request's needs this rescuer ticked they can bring. "other" is
+// free text on both sides, so it can't be cross-referenced and doesn't count.
+export function matchCount(supplies, request) {
+  return supplies.filter((s) => s !== 'other' && request.needs?.includes(s)).length;
+}
+
+// Best-matched first, priority breaking ties. Array.sort is stable, so equal
+// rows keep the newest-first order the API returned.
+// ponytail: match count only. Distance helper→needy is the obvious next factor
+// — add it here once helpers store a real pin rather than a district jitter.
+export function sortByMatch(requests, supplies) {
+  if (!supplies.some((s) => s !== 'other')) return requests;
+  return [...requests].sort((a, b) =>
+    matchCount(supplies, b) - matchCount(supplies, a)
+    || PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority));
+}

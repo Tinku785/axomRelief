@@ -5,13 +5,38 @@ import { supabaseConfigured } from '../supabaseClient';
 import { timeAgo, formatDateTime, toTel } from '../utils/time';
 import FeedbackSheet from './FeedbackSheet';
 
-const CONTACT_EMAIL = 'Ankitabhagawati21@gmail.com';
+// The people running this, in the order they should be tried. Not in the
+// database: these are the operators, not editable helpline rows.
+const CONTACTS = [
+  ['Mrigakshee K', '+91 91010 29532'],
+  ['Tinku M. Kaushik', '+91 95313 58175'],
+  ['Nikumoni Borah', '+91 84718 69773'],
+  ['Tonmoy Mahanta', '+91 80119 34179'],
+  ['Ankita Bhagawati', '+91 99546 49124'],
+];
+
+function Sheet({ title, onClose, children }) {
+  const { t } = useLang();
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet__head">
+          <div className="sheet__title">{title}</div>
+          <button className="sheet__close" onClick={onClose} aria-label={t.close}>✕</button>
+        </div>
+        {children}
+        <button className="btn btn-green" onClick={onClose}>{t.close}</button>
+      </div>
+    </div>
+  );
+}
 
 export default function SiteFooter() {
   const { lang, t } = useLang();
   const { news, helplines, loading } = useFooterData();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   return (
     <div style={{ marginTop: 30 }}>
@@ -55,23 +80,33 @@ export default function SiteFooter() {
       <div className="app-footer">
         <nav className="app-footer__links">
           <button className="app-footer__link" onClick={() => setAboutOpen(true)}>{t.aboutUs}</button>
-          <a className="app-footer__link" href={`mailto:${CONTACT_EMAIL}`}>{t.contactUs}</a>
+          <button className="app-footer__link" onClick={() => setContactOpen(true)}>{t.contactUs}</button>
           <button className="app-footer__link" onClick={() => setFeedbackOpen(true)}>{t.feedback}</button>
         </nav>
         <div className="app-footer__meta">AxomRelief v1, 2026</div>
       </div>
 
       {aboutOpen && (
-        <div className="sheet-backdrop" onClick={() => setAboutOpen(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet__head">
-              <div className="sheet__title">{t.aboutUs}</div>
-              <button className="sheet__close" onClick={() => setAboutOpen(false)} aria-label={t.close}>✕</button>
-            </div>
-            <p className="sheet__body">{t.aboutBody}</p>
-            <button className="btn btn-green" onClick={() => setAboutOpen(false)}>{t.close}</button>
+        <Sheet title={t.aboutUs} onClose={() => setAboutOpen(false)}>
+          <p className="sheet__body">{t.aboutBody}</p>
+        </Sheet>
+      )}
+
+      {contactOpen && (
+        <Sheet title={t.contactUs} onClose={() => setContactOpen(false)}>
+          {/* Same row as the helpline list: a name, and a number that dials. */}
+          <div className="helpline-list" style={{ marginBottom: 14 }}>
+            {CONTACTS.map(([name, phone]) => (
+              <a className="helpline-row" key={phone} href={toTel(phone)}>
+                <span className="helpline-row__label">{name}</span>
+                <span className="helpline-row__phone">
+                  <span aria-hidden="true">📞</span>
+                  {phone}
+                </span>
+              </a>
+            ))}
           </div>
-        </div>
+        </Sheet>
       )}
 
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

@@ -12,6 +12,38 @@ export function normalizePhone(raw) {
   return digits;
 }
 
+// A primary plus four alternates. More than that is a phone book, not a
+// household, and every extra row is another field to fill in a flood.
+export const MAX_NUMBERS = 5;
+
+// Every number a row can be reached on, in call order. One place so a card,
+// the map popup and the admin panel never disagree about what exists.
+// De-duplicated: a repeated number is a second button that dials the same
+// dead phone, and React would key two list items the same.
+export function phoneList(row) {
+  return [...new Set([row.contact_number, ...(row.contact_numbers || [])].filter(Boolean))];
+}
+
+// The form holds one array: index 0 is the primary, the rest are optional
+// extras the user added. Blank extras are simply dropped.
+export function cleanContacts(list) {
+  return [...new Set(list.map(normalizePhone).filter(Boolean))];
+}
+
+export function contactsError(list, lang) {
+  const filled = list.map(normalizePhone);
+  const primary = phoneError(filled[0], lang);
+  if (primary) return primary;
+  for (const n of filled.slice(1)) {
+    const err = n && phoneError(n, lang);
+    if (err) return err;
+  }
+  if (cleanContacts(list).length !== filled.filter(Boolean).length) {
+    return lang ? 'একেটা নম্বৰ দুবাৰ দিয়া হৈছে।' : 'The same number has been added twice.';
+  }
+  return '';
+}
+
 export function isValidPhone(raw) {
   return INDIAN_MOBILE.test(normalizePhone(raw));
 }

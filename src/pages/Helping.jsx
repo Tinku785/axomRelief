@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
-import { needLabel, DISTRICTS } from '../i18n/strings';
-import { PRIORITY_META, PRIORITY_ORDER } from '../utils/priority';
+import { needLabel, DISTRICTS, NEEDS } from '../i18n/strings';
+import { PRIORITY_META, PRIORITY_ORDER, matchCount, sortByMatch } from '../utils/priority';
 import { requestsToMarkers, helpersToMarkers } from '../utils/mapGeo';
-import { phoneError, normalizePhone } from '../utils/phone';
+import { contactsError, phoneList } from '../utils/phone';
 import { isRateLimited } from '../utils/rateLimit';
 import { useReliefData } from '../hooks/useReliefData';
 import { registerHelper } from '../api/helpers';
@@ -12,10 +12,15 @@ import { supabaseConfigured } from '../supabaseClient';
 import { timeAgo, toTel } from '../utils/time';
 import ReliefMap from '../components/ReliefMap';
 import MapModal from '../components/MapModal';
+import HelperCard from '../components/HelperCard';
+import PhoneFields from '../components/PhoneFields';
 import TurnstileWidget from '../components/TurnstileWidget';
 import Pager, { pageSlice } from '../components/Pager';
 
-const emptyHelperForm = { name: '', contact: '', districts: [], areas: '', given: '', boat: null };
+const emptyHelperForm = {
+  name: '', contacts: [''], districts: [],
+  areas: '', supplies: [], suppliesOther: '', boat: null, notes: '',
+};
 
 export default function Helping() {
   const { lang, t } = useLang();
@@ -27,30 +32,36 @@ export default function Helping() {
   const [registered, setRegistered] = useState(false);
   const [helperError, setHelperError] = useState('');
   const [registering, setRegistering] = useState(false);
+  // Arriving from "See who is helping" means the visitor wants the lists, not
+  // the sign-up form — so the form starts folded away rather than filling the
+  // first screen.
+  const [formOpen, setFormOpen] = useState(!hash);
 
   const [fPrio, setFPrio] = useState('All');
   const [page, setPage] = useState(0);
+  const [helperPage, setHelperPage] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
+  const [focus, setFocus] = useState(null);
   const [company, setCompany] = useState(''); // honeypot
   const [turnstileToken, setTurnstileToken] = useState('');
+  const mapRef = useRef(null);
 
   const setField = (key) => (e) => setHf((f) => ({ ...f, [key]: e.target.value }));
 
-  // Arriving from "See who is helping" should land on the list, not on the
-  // rescuer form. React Router does not scroll to a hash on its own, and the
-  // list only exists once the data has loaded.
+  // React Router does not scroll to a hash on its own, and the target section
+  // only exists once the data has loaded.
   useEffect(() => {
-    if (hash !== '#list' || loading) return;
-    document.getElementById('list')?.scrollIntoView();
+    if (!hash || loading) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView();
   }, [hash, loading]);
 
   // A new filter is a new list, so page 3 of the old one is meaningless.
   const pickPrio = (v) => { setFPrio(v); setPage(0); };
 
-  const toggleDistrict = (d) => {
+  const toggleIn = (key, value) => {
     setHf((f) => ({
       ...f,
-      districts: f.districts.includes(d) ? f.districts.filter((x) => x !== d) : [...f.districts, d],
+      [key]: f[key].includes(value) ? f[key].filter((x) => x !== value) : [...f[key], value],
     }));
   };
 
@@ -61,13 +72,17 @@ export default function Helping() {
       setHelperError(lang ? 'নাম দিয়ক।' : 'Please enter your name.');
       return;
     }
-    const phoneErr = phoneError(hf.contact, lang);
+    const phoneErr = contactsError(hf.contacts, lang);
     if (phoneErr) {
       setHelperError(phoneErr);
       return;
     }
     if (!hf.districts.length) {
       setHelperError(lang ? 'অন্ততঃ এখন জিলা বাছক।' : 'Select at least one district you are available in.');
+      return;
+    }
+    if (!hf.supplies.length) {
+      setHelperError(lang ? 'আপুনি কি সামগ্ৰী দিব পাৰে বাছক।' : 'Select at least one supply you can bring.');
       return;
     }
     if (!turnstileToken) {
@@ -92,7 +107,11 @@ export default function Helping() {
     }
   };
 
-  const visibleRequests = fPrio === 'All' ? requests : requests.filter((r) => r.priority === fPrio);
+  const byPrio = fPrio === 'All' ? requests : requests.filter((r) => r.priority === fPrio);
+  // Once a rescuer has ticked what they can bring, the useful order is "who can
+  // I actually help most" rather than "who posted last".
+  const scoring = hf.supplies.some((s) => s !== 'other');
+  const visibleRequests = sortByMatch(byPrio, hf.supplies);
   const pageRequests = pageSlice(visibleRequests, page);
 
   const markers = [
@@ -106,6 +125,13 @@ export default function Helping() {
     return parts.join(', ');
   };
 
+  const showOnMap = (r) => {
+    setFocus({ lat: r.lat, lng: r.lng });
+    // No smooth behaviour: it is ignored under reduced-motion and in several
+    // in-app browsers, which silently leaves the map off-screen.
+    mapRef.current?.scrollIntoView({ block: 'center' });
+  };
+
   return (
     <div className="screen">
       <button className="btn-back" onClick={() => navigate('/')}>‹ {t.back}</button>
@@ -116,19 +142,21 @@ export default function Helping() {
       <div className="panel-card">
         <div className="panel-card__head">
           <div style={{ font: '700 14px system-ui', color: 'var(--text)' }}>{t.rescuerReg}</div>
-          {registered && <span className="badge-registered">✓ {t.registered}</span>}
+          {registered
+            ? <span className="badge-registered">✓ {t.registered}</span>
+            : <button type="button" className="link-btn" onClick={() => setFormOpen((v) => !v)}>
+              {formOpen ? '▴' : '▾'}
+            </button>}
         </div>
-        {!registered ? (
+        {registered && (
+          <div style={{ padding: 13, font: '13px/1.6 system-ui', color: 'var(--text-secondary)' }}>{t.registeredBody}</div>
+        )}
+        {!registered && formOpen && (
           <form className="stack gap-10" style={{ padding: 13 }} onSubmit={submitHelper}>
             <input className="input" value={hf.name} onChange={setField('name')} placeholder={t.phName} />
-            <input
-              className="input"
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              value={hf.contact}
-              onChange={(e) => setHf((f) => ({ ...f, contact: normalizePhone(e.target.value) }))}
-              placeholder={t.phPhone}
+            <PhoneFields
+              numbers={hf.contacts}
+              onChange={(contacts) => setHf((f) => ({ ...f, contacts }))}
             />
 
             <div>
@@ -141,7 +169,7 @@ export default function Helping() {
                       type="button"
                       key={d}
                       className={`chip ${on ? 'active' : ''}`}
-                      onClick={() => toggleDistrict(d)}
+                      onClick={() => toggleIn('districts', d)}
                     >
                       {on ? '✓ ' : ''}{d}
                     </button>
@@ -155,7 +183,47 @@ export default function Helping() {
               <input className="input" value={hf.areas} onChange={setField('areas')} placeholder={t.phAreasText} />
             </div>
 
-            <input className="input" value={hf.given} onChange={setField('given')} placeholder={t.phGiven} />
+            {/* Same category keys the request form uses, which is the whole
+                point: a free-text "rice and water" cannot be matched against a
+                request's needs, a ticked list can. */}
+            <div>
+              <div className="field__label" style={{ marginBottom: 7 }}>{t.suppliesCanGive}</div>
+              <div className="chip-row">
+                {NEEDS.map((n) => {
+                  const on = hf.supplies.includes(n.key);
+                  return (
+                    <button
+                      type="button"
+                      key={n.key}
+                      className={`chip ${on ? 'active' : ''}`}
+                      onClick={() => { toggleIn('supplies', n.key); setPage(0); }}
+                    >
+                      {on ? '✓ ' : ''}{n.label[lang] ?? n.label[0]}
+                    </button>
+                  );
+                })}
+              </div>
+              {hf.supplies.includes('other') && (
+                <input
+                  className="input"
+                  style={{ marginTop: 9 }}
+                  value={hf.suppliesOther}
+                  onChange={setField('suppliesOther')}
+                  placeholder={t.phSuppliesOther}
+                />
+              )}
+            </div>
+
+            <div>
+              <div className="field__label" style={{ marginBottom: 6 }}>{t.otherDetails}</div>
+              <textarea
+                className="input"
+                rows={2}
+                value={hf.notes}
+                onChange={setField('notes')}
+                placeholder={t.phHelperNotes}
+              />
+            </div>
 
             <div>
               <div className="field__label" style={{ marginBottom: 6 }}>{t.boatAvailable}</div>
@@ -179,17 +247,28 @@ export default function Helping() {
               {registering ? t.registering : t.register}
             </button>
           </form>
-        ) : (
-          <div style={{ padding: 13, font: '13px/1.6 system-ui', color: 'var(--text-secondary)' }}>{t.registeredBody}</div>
         )}
       </div>
 
-      <div style={{ padding: '20px 14px 0' }}>
-        <ReliefMap markers={markers} interactive={false} onExpand={() => setMapOpen(true)}>
+      <div style={{ padding: '20px 14px 0' }} ref={mapRef}>
+        <ReliefMap markers={markers} interactive={false} focus={focus} onExpand={() => setMapOpen(true)}>
           <div className="map-badge">
             <div className="map-badge__title">{t.mapTitle}</div>
           </div>
         </ReliefMap>
+      </div>
+
+      <div id="helpers" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
+        <div className="section-heading">
+          <div className="section-title">{t.activeRescuers}</div>
+          <div className="section-meta">{helpers.length}</div>
+        </div>
+        <div className="stack gap-9" style={{ marginTop: 11 }}>
+          {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
+          {supabaseConfigured && !loading && !helpers.length && <div className="state-msg">{t.noHelpersHere}</div>}
+          {pageSlice(helpers, helperPage).map((h) => <HelperCard key={h.id} helper={h} />)}
+          <Pager total={helpers.length} page={helperPage} onPage={setHelperPage} />
+        </div>
       </div>
 
       <div id="list" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
@@ -197,6 +276,7 @@ export default function Helping() {
           <div className="section-title">{t.peopleNeedHelp}</div>
           <div className="section-meta">{visibleRequests.length}</div>
         </div>
+        {scoring && <div className="section-hint">{t.matchNote}</div>}
         <div className="chip-row" style={{ marginTop: 10 }}>
           <button className={`chip ${fPrio === 'All' ? 'active' : ''}`} onClick={() => pickPrio('All')}>
             {lang ? 'সকলো' : 'All'}
@@ -226,6 +306,7 @@ export default function Helping() {
         )}
         {supabaseConfigured && !loading && pageRequests.map((r) => {
           const p = PRIORITY_META[r.priority];
+          const matched = matchCount(hf.supplies, r);
           return (
             <div key={r.id} className="request-card" style={{ borderLeft: `5px solid ${p.color}` }}>
               <div className="request-card__top">
@@ -234,16 +315,30 @@ export default function Helping() {
               </div>
               <div className="request-card__line">{r.location}, {r.district} · {r.num_people} {t.peopleWord}</div>
               <div className="request-card__needs">{needsText(r)}</div>
+              {scoring && (
+                <div className={`match-badge ${matched ? '' : 'match-badge--none'}`}>
+                  {matched}/{r.needs.length} {t.matchWord}
+                </div>
+              )}
               <div style={{ font: '13px/1.6 system-ui', color: r.boat_required ? 'var(--orange)' : 'var(--text-tertiary)' }}>
                 {r.boat_required ? (lang ? 'নাও লাগে' : 'Boat required') : (lang ? 'নাও নালাগে' : 'Reachable by road')}
               </div>
               {r.notes && <div className="request-card__notes">{r.notes}</div>}
               <div className="request-card__foot">
                 <span className="request-card__time">{timeAgo(r.created_at, lang)}</span>
-                <a className="call-btn" href={toTel(r.contact_number)} aria-label={`${t.callNow} ${r.name}`}>
-                  <span className="call-btn__icon" aria-hidden="true">📞</span>
-                  {r.contact_number}
-                </a>
+                <div className="request-card__calls">
+                  {r.lat != null && (
+                    <button type="button" className="map-btn" onClick={() => showOnMap(r)}>
+                      📍 {t.showOnMap}
+                    </button>
+                  )}
+                  {phoneList(r).map((num) => (
+                    <a key={num} className="call-btn" href={toTel(num)} aria-label={`${t.callNow} ${r.name}`}>
+                      <span className="call-btn__icon" aria-hidden="true">📞</span>
+                      {num}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           );

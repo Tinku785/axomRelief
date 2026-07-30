@@ -330,12 +330,23 @@ textarea.input { resize: vertical; }
   gap: 14px;
   border: none;
   width: 100%;
+  /* These two are the only actions on the home screen, so they sit above the
+     page rather than in it. Tinted shadows, not grey: a neutral drop shadow
+     under a coloured border reads as dirt. */
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.placard-green { border: 1.5px solid var(--green); }
-.placard-green:hover { background: var(--green-bg); }
-.placard-orange { border: 1.5px solid var(--orange); }
-.placard-orange:hover { background: var(--orange-bg); }
+.placard:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .placard { transition: none; }
+  .placard:active { transform: none; }
+}
+
+.placard-green { border: 1.5px solid var(--green); box-shadow: 0 4px 14px rgba(46, 125, 74, 0.22); }
+.placard-green:hover { background: var(--green-bg); box-shadow: 0 8px 22px rgba(46, 125, 74, 0.3); }
+.placard-orange { border: 1.5px solid var(--orange); box-shadow: 0 4px 14px rgba(192, 99, 42, 0.22); }
+.placard-orange:hover { background: var(--orange-bg); box-shadow: 0 8px 22px rgba(192, 99, 42, 0.3); }
 
 .placard__icon { width: 56px; height: 56px; object-fit: contain; }
 .placard__title-green { font: 700 16px/1.25 var(--font); color: var(--green); }
@@ -432,6 +443,54 @@ textarea.input { resize: vertical; }
   margin-top: 6px;
 }
 .request-card__time { font: 11.5px var(--font); color: var(--text-tertiary); }
+
+/* A card can carry two numbers plus the map jump, so the foot wraps. */
+.request-card__calls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.map-btn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font: 700 12.5px var(--font);
+  cursor: pointer;
+}
+.map-btn:hover { border-color: var(--green); color: var(--green); }
+
+.match-badge {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--green-bg);
+  color: var(--green);
+  font: 700 11.5px var(--font);
+}
+.match-badge--none { background: var(--border-lighter); color: var(--text-tertiary); }
+
+/* Plain text button: "+ Add another number", the form fold toggle. */
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  /* Sits inside flex-column forms, where a plain button would stretch the
+     full width and centre its own label. */
+  align-self: flex-start;
+  text-align: left;
+  color: var(--green);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+
+.alt-number { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.alt-number .input { width: 100%; }
 .request-card__call { font: 700 13px var(--font); color: var(--text-secondary); }
 
 .en-route-banner {

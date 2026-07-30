@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
 import { DISTRICTS, NEEDS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER } from '../utils/priority';
-import { phoneError, normalizePhone } from '../utils/phone';
+import { contactsError } from '../utils/phone';
 import { isRateLimited } from '../utils/rateLimit';
 import { useReliefData } from '../hooks/useReliefData';
 import { submitRequest } from '../api/requests';
 import { supabaseConfigured } from '../supabaseClient';
 import TurnstileWidget from '../components/TurnstileWidget';
 import HelperCard from '../components/HelperCard';
+import PhoneFields from '../components/PhoneFields';
 import Pager, { pageSlice } from '../components/Pager';
 
 const emptyForm = {
-  name: '', contact: '', location: '', district: DISTRICTS[0],
+  name: '', contacts: [''], location: '', district: DISTRICTS[0],
   numPeople: '', needs: [], other: '', notes: '', priority: '', boat: null,
   hasLiveLocation: false, lat: null, lng: null, accuracy: null,
 };
@@ -103,11 +104,11 @@ export default function RequestForm() {
     e.preventDefault();
     if (company) return; // honeypot tripped — silently drop
 
-    if (!form.name || !form.location || !form.contact || !form.priority || !form.needs.length) {
+    if (!form.name || !form.location || !form.contacts[0] || !form.priority || !form.needs.length) {
       setFormError(lang ? 'নাম, ঠিকনা, সামগ্ৰী, ফোন নম্বৰ আৰু অগ্ৰাধিকাৰ দিয়ক।' : 'Please fill name, address, supplies, phone number and priority.');
       return;
     }
-    const phoneErr = phoneError(form.contact, lang);
+    const phoneErr = contactsError(form.contacts, lang);
     if (phoneErr) {
       setFormError(phoneErr);
       return;
@@ -141,19 +142,14 @@ export default function RequestForm() {
           <div className="field__label">{t.yourName}</div>
           <input className="input" value={form.name} onChange={set('name')} placeholder={t.phName} required />
         </label>
-        <label className="field">
-          <div className="field__label">{t.phone}</div>
-          <input
-            className="input"
-            type="tel"
-            inputMode="numeric"
-            maxLength={10}
-            value={form.contact}
-            onChange={(e) => setForm((f) => ({ ...f, contact: normalizePhone(e.target.value) }))}
-            placeholder={t.phPhone}
-            required
-          />
-        </label>
+        {/* Extra numbers are what gets someone reached when the first phone is
+            dead or out of signal. Not inside a <label>: a button in a label
+            re-focuses the input on every click. */}
+        <PhoneFields
+          numbers={form.contacts}
+          onChange={(contacts) => setForm((f) => ({ ...f, contacts }))}
+          labelFirst
+        />
         <label className="field">
           <div className="field__label">{t.address}</div>
           <textarea className="input" rows={2} value={form.location} onChange={set('location')} placeholder={t.phLoc} required />

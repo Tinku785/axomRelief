@@ -53,6 +53,19 @@
 
 .admin-row__actions { display: flex; gap: 8px; margin-top: 9px; }
 
+/* Dispatch needs every field of a request, not a summary line: the operator on
+   the phone has to read out a number and a landmark, not guess them. */
+.admin-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 10px;
+  margin-top: 8px;
+  font: 12px/1.45 var(--font);
+}
+.admin-detail dt { color: var(--text-tertiary); }
+.admin-detail dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.admin-detail a { color: var(--green); }
+
 .admin-btn {
   padding: 7px 12px;
   border: 1.5px solid var(--border);
