@@ -30,22 +30,25 @@ alter table public.helpers  drop column if exists contact_number_2;
 -- Four extras on top of the primary. Element format is checked by joining the
 -- array into one string: a CHECK cannot run a subquery, and array_to_string is
 -- immutable, so this is the one expression that validates every element.
-do $$
-declare tbl text;
-begin
-  foreach tbl in array array['requests', 'helpers'] loop
-    execute format('alter table public.%I drop constraint if exists %I', tbl, tbl || '_contact_numbers_check');
-    execute format($f$
-      alter table public.%I add constraint %I check (
-        coalesce(array_length(contact_numbers, 1), 0) <= 4
-        and (
-          coalesce(array_length(contact_numbers, 1), 0) = 0
-          or array_to_string(contact_numbers, ',') ~ '^[6-9][0-9]{9}(,[6-9][0-9]{9})*$'
-        )
-      )
-    $f$, tbl, tbl || '_contact_numbers_check');
-  end loop;
-end $$;
+alter table public.requests drop constraint if exists requests_contact_numbers_check;
+alter table public.requests
+  add constraint requests_contact_numbers_check check (
+    coalesce(array_length(contact_numbers, 1), 0) <= 4
+    and (
+      coalesce(array_length(contact_numbers, 1), 0) = 0
+      or array_to_string(contact_numbers, ',') ~ '^[6-9][0-9]{9}(,[6-9][0-9]{9})*$'
+    )
+  );
+
+alter table public.helpers drop constraint if exists helpers_contact_numbers_check;
+alter table public.helpers
+  add constraint helpers_contact_numbers_check check (
+    coalesce(array_length(contact_numbers, 1), 0) <= 4
+    and (
+      coalesce(array_length(contact_numbers, 1), 0) = 0
+      or array_to_string(contact_numbers, ',') ~ '^[6-9][0-9]{9}(,[6-9][0-9]{9})*$'
+    )
+  );
 
 alter table public.helpers drop constraint if exists helpers_notes_len;
 alter table public.helpers
