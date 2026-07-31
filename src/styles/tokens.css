@@ -12,6 +12,9 @@
   --border-light: #E6EAEE;
   --border-lighter: #F0F2F5;
 
+  /* Brand colours. These are the ONLY place either hue is written down —
+     everything else, including the Leaflet pins and inline styles, reads
+     var(--green) / var(--orange) so a rebrand stays a two-line change. */
   --green: #2E7D4A;
   --green-hover: #23603A;
   --green-bg: #EEF5F0;

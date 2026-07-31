@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  MapContainer, TileLayer, Marker, Popup, useMap, AttributionControl,
+  MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, AttributionControl,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,8 +14,10 @@ const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 const MAX_FIT_ZOOM = 13;
-const HELPER_COLOR = '#C0632A';
-const REQUEST_COLOR = '#2E7D4A';
+// CSS variables, not literals: these end up inside injected HTML and inline
+// styles, both of which resolve var() normally, so the palette stays in one file.
+const HELPER_COLOR = 'var(--orange)';
+const REQUEST_COLOR = 'var(--green)';
 
 // Leaflet's default marker is a PNG sprite loaded from a CDN path that breaks
 // under a bundler. A plain coloured dot is smaller and matches the legend.
@@ -64,14 +66,34 @@ function FitToMarkers({ markers, focus }) {
 // pin at once, so picking a row flies the map to that one pin.
 const FOCUS_ZOOM = 14;
 
-function FocusOnPoint({ focus }) {
+function FocusOnPoint({ focus, markerRefs }) {
   const map = useMap();
   useEffect(() => {
-    if (focus) map.flyTo([focus.lat, focus.lng], FOCUS_ZOOM);
+    if (!focus) return;
+    // setView, not flyTo. The animated version needed a 'moveend' to know when
+    // to open the popup, and that event never arrived: React runs this effect
+    // twice, and the second flyTo aborts the first flight and eats the event.
+    // Jumping straight there needs no completion callback at all.
+    map.setView([focus.lat, focus.lng], FOCUS_ZOOM);
+    // Same popup a tap on the pin gives — the point of "show on map" is to see
+    // who this is, not just where.
+    markerRefs.current[focus.id]?.openPopup();
     // Deliberately keyed on object identity, not lat/lng: the caller stores
     // focus in state and sets a fresh object per click, so tapping the same
     // row again re-centres a map the user has since panned away.
   }, [map, focus]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+// The legend badge and the expand button sit on top of the map, and a popup
+// pushed up by keepInView lands underneath them — the name and address end up
+// behind the legend. They are decoration; the popup is the answer to a
+// question someone just asked, so the overlays get out of the way.
+function PopupWatcher({ onChange }) {
+  useMapEvents({
+    popupopen: () => onChange(true),
+    popupclose: () => onChange(false),
+  });
   return null;
 }
 
@@ -108,10 +130,22 @@ function MarkerPopup({ marker }) {
         </a>
       ))}
       {marker.kind !== 'helper' && (
-        <div className="map-info__coords">
-          <code>{coords}</code>
-          <button type="button" onClick={copyCoords}>{copied ? t.copied : t.copy}</button>
-        </div>
+        <>
+          {/* Copying coordinates assumes the rescuer then pastes them somewhere.
+              This is the one tap that just starts the navigation. */}
+          <a
+            className="map-info__maps"
+            href={`https://www.google.com/maps/search/?api=1&query=${marker.position.lat},${marker.position.lng}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            ➤ {t.openInMaps}
+          </a>
+          <div className="map-info__coords">
+            <code>{coords}</code>
+            <button type="button" onClick={copyCoords}>{copied ? t.copied : t.copy}</button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -121,6 +155,8 @@ export default function ReliefMap({
   markers = [], interactive = true, onExpand, focus = null, children,
 }) {
   const { t } = useLang();
+  const markerRefs = useRef({});
+  const [popupOpen, setPopupOpen] = useState(false);
 
   return (
     <div className={`relief-map ${interactive ? '' : 'relief-map--preview'}`}>
@@ -139,26 +175,32 @@ export default function ReliefMap({
             the one required credit is left. */}
         <AttributionControl position="bottomright" prefix={false} />
         <TileLayer url={TILE_URL} attribution={TILE_ATTR} />
+        <PopupWatcher onChange={setPopupOpen} />
         <FitToMarkers markers={markers} focus={focus} />
-        <FocusOnPoint focus={focus} />
+        <FocusOnPoint focus={focus} markerRefs={markerRefs} />
 
         {markers.map((m) => (
           <Marker
             key={m.id}
+            ref={(inst) => { markerRefs.current[m.id] = inst; }}
             position={[m.position.lat, m.position.lng]}
             title={m.title}
             icon={pinIcon(m.kind === 'helper' ? HELPER_COLOR : (m.color || REQUEST_COLOR))}
           >
-            <Popup>
+            {/* The preview map is only ~240px tall, so a popup opened near the
+                top edge lands outside it and gets cut off by the rounded-corner
+                overflow — which is what made "See on Google Maps" unclickable.
+                keepInView pans the map to hold the whole popup inside. */}
+            <Popup autoPan keepInView autoPanPadding={[12, 12]} maxWidth={260}>
               <MarkerPopup marker={m} />
             </Popup>
           </Marker>
         ))}
       </MapContainer>
 
-      {children}
+      {!popupOpen && children}
 
-      {!interactive && (
+      {!interactive && !popupOpen && (
         <button type="button" className="relief-map__expand" onClick={onExpand}>
           ⤢ {t.tapMap}
         </button>

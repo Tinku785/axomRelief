@@ -17,6 +17,32 @@ export function formatDateTime(dateInput, lang) {
   });
 }
 
+// "29 Jul 2026" — the date a request was posted, shown on the card next to the
+// relative time. A rescuer scanning a list needs both: "2 d ago" for urgency,
+// the date for the notes they write down.
+export function formatDate(dateInput, lang) {
+  const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(lang ? 'as-IN' : 'en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+export const WHEN_OPTIONS = ['all', 'today', 'recent', 'older'];
+
+// Calendar days, not rolling 24h windows: at 1am, something posted at 11pm last
+// night is "yesterday" to a reader, however few hours have passed.
+export function matchesWhen(dateInput, when, now = new Date()) {
+  if (when === 'all') return true;
+  const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return false;
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY = 86400000;
+  if (when === 'today') return d.getTime() >= startOfToday;
+  if (when === 'recent') return d.getTime() >= startOfToday - DAY; // today + yesterday
+  return d.getTime() < startOfToday - DAY;
+}
+
 export function toTel(phone) {
   return 'tel:' + String(phone || '').replace(/[^0-9]/g, '');
 }

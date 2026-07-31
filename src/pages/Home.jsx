@@ -57,6 +57,18 @@ export default function Home() {
           <img className="placard__icon" src={iconAmHelping} alt="" width="64" height="64" />
           <span className="placard__title-orange">{t.amHelping}</span>
         </button>
+
+        {/* Each placard is "I am X"; the button under it is "show me the other
+            side", and it carries the colour of the people it leads to —
+            rescuers orange, requesters green — not of the placard above it.
+            The rescuer list lives on the request page, the request list on the
+            helping page, so each audience lands where its counterpart is. */}
+        <button className="cta cta-orange" onClick={() => navigate('/request#rescuers')}>
+          {t.seeRescuers} ({helpers.length})
+        </button>
+        <button className="cta cta-green" onClick={() => navigate('/helping#list')}>
+          {t.seeRequesters} ({requests.length})
+        </button>
       </div>
 
       {mapOpen && <MapModal markers={markers} onClose={() => setMapOpen(false)} />}

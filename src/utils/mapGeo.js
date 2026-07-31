@@ -28,8 +28,11 @@ function hasCoords(row) {
   return typeof row.lat === 'number' && typeof row.lng === 'number';
 }
 
+// Resolved requests stay in the list (greyed) but leave the map: a pin means
+// "someone here still needs reaching", and a map full of finished jobs is what
+// makes rescuers stop trusting it.
 export function requestsToMarkers(requests, priorityMeta) {
-  return requests.filter(hasCoords).map((r) => ({
+  return requests.filter((r) => hasCoords(r) && r.status !== 'resolved').map((r) => ({
     id: r.id,
     position: { lat: r.lat, lng: r.lng },
     title: r.name,

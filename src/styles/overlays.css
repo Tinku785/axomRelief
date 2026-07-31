@@ -260,7 +260,10 @@
 .map-info { min-width: 150px; font: 13px var(--font); }
 .map-info__title { font-weight: 700; color: #202124; }
 .map-info__sub { margin-top: 2px; font-size: 12px; color: #5F6368; }
-.map-info__call {
+/* Leaflet ships `.leaflet-container a { color: #0078A8 }`, which outspecifies a
+   bare class — the call link and the Maps button were rendering in its default
+   blue, white-on-blue-on-green included. Matching its specificity fixes both. */
+.leaflet-container a.map-info__call {
   display: inline-block;
   margin-top: 7px;
   font-weight: 700;
@@ -275,6 +278,19 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
+
+.leaflet-container a.map-info__maps {
+  display: block;
+  margin-top: 7px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: var(--green);
+  color: #fff;
+  font: 700 12.5px var(--font);
+  text-align: center;
+  text-decoration: none;
+}
+.leaflet-container a.map-info__maps:hover { background: var(--green-hover); color: #fff; }
 
 .map-info__coords {
   display: flex;

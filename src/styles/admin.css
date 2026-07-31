@@ -66,6 +66,15 @@
 .admin-detail dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 .admin-detail a { color: var(--green); }
 
+.admin-select {
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 7px;
+  font: 600 12px var(--font);
+}
+
 .admin-btn {
   padding: 7px 12px;
   border: 1.5px solid var(--border);

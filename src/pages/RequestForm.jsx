@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
 import { DISTRICTS, NEEDS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER } from '../utils/priority';
@@ -22,6 +22,7 @@ const emptyForm = {
 export default function RequestForm() {
   const { lang, t } = useLang();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { helpers, loading } = useReliefData();
 
   const [form, setForm] = useState(emptyForm);
@@ -37,6 +38,13 @@ export default function RequestForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // "They are helping" on the home screen lands here, at the rescuer list —
+  // which only exists once the data has loaded.
+  useEffect(() => {
+    if (!hash || loading) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash, loading]);
 
   const toggleNeed = (key) => {
     setForm((f) => ({
@@ -295,8 +303,14 @@ export default function RequestForm() {
         </button>
       </form>
 
-      <div style={{ margin: '28px 14px 0', borderTop: '1.5px solid var(--border-light)', paddingTop: 18 }}>
-        <div className="section-title">{t.activeRescuers}</div>
+      <div
+        id="rescuers"
+        style={{ margin: '28px 14px 0', borderTop: '1.5px solid var(--border-light)', paddingTop: 18, scrollMarginTop: 76 }}
+      >
+        <div className="section-heading">
+          <div className="section-title">{t.activeRescuers}</div>
+          <div className="section-meta">{districtHelpers.length}</div>
+        </div>
         <div className="stack gap-9" style={{ marginTop: 11 }}>
           {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
           {!loading && !districtHelpers.length && <div className="state-msg">{t.noHelpersHere}</div>}

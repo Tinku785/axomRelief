@@ -5,10 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { useFooterData } from '../context/FooterDataContext';
 import { needLabel } from '../i18n/strings';
 import { PRIORITY_META } from '../utils/priority';
+import { STATUS_META, STATUS_ORDER, statusOf } from '../utils/status';
 import { timeAgo, formatDateTime, toTel } from '../utils/time';
 import { phoneList } from '../utils/phone';
 import {
-  fetchAllRequestsForAdmin, setRequestHidden, deleteRequest,
+  fetchAllRequestsForAdmin, setRequestHidden, deleteRequest, setRequestStatus,
 } from '../api/requests';
 import {
   fetchAllHelpersForAdmin, setHelperHidden, deleteHelper,
@@ -118,10 +119,10 @@ export default function AdminDashboard() {
         <div style={{ padding: '0 14px' }}>
           <div className="map-legend" style={{ margin: '0 0 10px' }}>
             <span className="map-legend__item">
-              <i className="relief-pin relief-pin--dot" style={{ background: '#2E7D4A' }} /> Requesters ({requests.filter((r) => !r.hidden).length})
+              <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} /> Requesters ({requests.filter((r) => !r.hidden).length})
             </span>
             <span className="map-legend__item">
-              <i className="relief-pin relief-pin--dot" style={{ background: '#C0632A' }} /> Rescuers ({helpers.filter((h) => !h.hidden).length})
+              <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} /> Rescuers ({helpers.filter((h) => !h.hidden).length})
             </span>
           </div>
           <div className="admin-map">
@@ -167,6 +168,8 @@ export default function AdminDashboard() {
                   <dd>{needsText(r) || '—'}</dd>
                   <dt>Boat</dt>
                   <dd>{r.boat_required ? 'Required' : 'Not required'}</dd>
+                  <dt>Status</dt>
+                  <dd>{STATUS_META[statusOf(r)].label}</dd>
                   {r.notes && <><dt>Notes</dt><dd>{r.notes}</dd></>}
                   {r.helper_name && (
                     <>
@@ -180,6 +183,18 @@ export default function AdminDashboard() {
                   )}
                 </dl>
                 <div className="admin-row__actions">
+                  {/* Only ever set "Help received" after phoning the family:
+                      a rescuer saying they set off is not confirmation that
+                      anyone arrived. */}
+                  <select
+                    className="admin-select"
+                    value={statusOf(r)}
+                    onChange={async (e) => { await setRequestStatus(r.id, e.target.value); loadRequests(); }}
+                  >
+                    {STATUS_ORDER.map((key) => (
+                      <option key={key} value={key}>{STATUS_META[key].label}</option>
+                    ))}
+                  </select>
                   <button
                     className="admin-btn"
                     onClick={async () => { await setRequestHidden(r.id, !r.hidden); loadRequests(); }}

@@ -1,8 +1,12 @@
 // Run with: node src/utils/selfcheck.js
 import assert from 'node:assert/strict';
 import { normalizePhone, isValidPhone, phoneList, cleanContacts, contactsError } from './phone.js';
-import { jitterAroundDistrict, DISTRICT_CENTERS } from './mapGeo.js';
+import { jitterAroundDistrict, DISTRICT_CENTERS, requestsToMarkers } from './mapGeo.js';
+import { matchesWhen } from './time.js';
+import { statusOf, isResolved } from './status.js';
 import { matchCount, sortByMatch } from './priority.js';
+import { requestShareText, helperShareText } from './share.js';
+import { t as tStrings } from '../i18n/strings.js';
 
 // ── Phone: Indian 10-digit mobiles only ──────────────────────────────────
 assert.equal(normalizePhone('98640 12345'), '9864012345', 'strips spaces');
@@ -83,5 +87,90 @@ assert.deepEqual(
   ['high', 'low'],
   'equal match: priority breaks the tie'
 );
+
+// ── "When" filter: calendar days, not rolling 24h windows ────────────────
+// 2 Aug, 1am — the awkward hour, where "3 hours ago" was yesterday.
+const NOW = new Date(2026, 7, 2, 1, 0, 0);
+const at = (...a) => new Date(...a).toISOString();
+
+const todayLate = at(2026, 7, 2, 0, 30);      // 30 min ago, same calendar day
+const lastNight = at(2026, 7, 1, 22, 0);      // 3 hr ago, but *yesterday*
+const twoDaysAgo = at(2026, 6, 31, 12, 0);
+const ancient = at(2026, 6, 20, 12, 0);
+
+assert.ok(matchesWhen(todayLate, 'today', NOW), 'this morning counts as today');
+assert.ok(!matchesWhen(lastNight, 'today', NOW), '10pm yesterday is not today, 3 hours or not');
+assert.ok(matchesWhen(lastNight, 'recent', NOW), 'yesterday is inside last 2 days');
+assert.ok(matchesWhen(todayLate, 'recent', NOW), 'today is inside last 2 days too');
+assert.ok(!matchesWhen(twoDaysAgo, 'recent', NOW), '31 Jul is outside last 2 days at 2 Aug');
+assert.ok(matchesWhen(twoDaysAgo, 'older', NOW), 'and therefore counts as older');
+assert.ok(matchesWhen(ancient, 'older', NOW));
+assert.ok(!matchesWhen(todayLate, 'older', NOW));
+
+// Every row must land in exactly one of today/recent-but-not-today/older.
+for (const d of [todayLate, lastNight, twoDaysAgo, ancient]) {
+  assert.ok(matchesWhen(d, 'all', NOW), '"any time" keeps everything');
+  const buckets = ['today', 'recent', 'older'].filter((w) => matchesWhen(d, w, NOW));
+  assert.ok(buckets.includes('older') !== buckets.includes('recent'), `${d}: older and recent are exclusive`);
+}
+assert.ok(!matchesWhen('not a date', 'today', NOW), 'garbage date is filtered out, not thrown on');
+
+// ── Status: unknown/missing values must not crash a card ─────────────────
+assert.equal(statusOf({ status: 'in_progress' }), 'in_progress');
+assert.equal(statusOf({}), 'looking', 'row written before the status column');
+assert.equal(statusOf({ status: 'nonsense' }), 'looking', 'unknown value falls back');
+assert.ok(isResolved({ status: 'resolved' }));
+assert.ok(!isResolved({}));
+
+// ── Resolved requests leave the map but stay in the list ─────────────────
+{
+  const rows = [
+    { id: 'a', lat: 26.9, lng: 94.6, name: 'A', location: 'x', district: 'Jorhat', num_people: 1, contact_number: '9864012345', status: 'looking' },
+    { id: 'b', lat: 26.9, lng: 94.6, name: 'B', location: 'x', district: 'Jorhat', num_people: 1, contact_number: '9864012345', status: 'in_progress' },
+    { id: 'c', lat: 26.9, lng: 94.6, name: 'C', location: 'x', district: 'Jorhat', num_people: 1, contact_number: '9864012345', status: 'resolved' },
+  ];
+  assert.deepEqual(requestsToMarkers(rows, null).map((m) => m.id), ['a', 'b'], 'resolved drops off the map');
+}
+
+// ── Share text: everything needed to act must survive the paste ──────────
+{
+  const t = tStrings(0);
+  const full = requestShareText({
+    name: 'Deep Phukan', priority: 'critical', location: 'Deoulia Khat', district: 'Sivasagar',
+    num_people: 600, needs: ['water', 'food'], needs_other: 'stationery', boat_required: true,
+    contact_number: '9864012345', contact_numbers: ['7864012345'], notes: 'Gate is locked',
+    lat: 26.9966375, lng: 94.6348281, has_live_location: true, created_at: '2026-07-30T11:31:51Z',
+  }, t, 0);
+
+  for (const must of ['Deep Phukan', 'Critical', 'Deoulia Khat, Sivasagar', '600',
+    'Water, Food, stationery', '9864012345, 7864012345', 'Gate is locked',
+    'https://www.google.com/maps/search/?api=1&query=26.9966375,94.6348281']) {
+    assert.ok(full.includes(must), `share text is missing ${must}`);
+  }
+  assert.ok(!full.includes('approximate area'), 'a real GPS pin is not labelled approximate');
+
+  // A district-centre placeholder must say so — a rescuer acting on it as if it
+  // were exact is how a boat goes to the wrong village.
+  const approx = requestShareText({
+    name: 'X', priority: 'needed', location: 'L', district: 'Jorhat', needs: [],
+    contact_number: '9864012345', lat: 26.75, lng: 94.2, has_live_location: false,
+  }, t, 0);
+  assert.ok(approx.includes('approximate area'), 'placeholder pin is labelled');
+
+  // Missing optional fields must drop out, not print "undefined"/"null".
+  const sparse = requestShareText({
+    name: 'Y', priority: 'needed', location: 'L', district: 'Jorhat', needs: [], contact_number: '9864012345',
+  }, t, 0);
+  assert.ok(!/undefined|null|NaN/.test(sparse), `sparse row leaked a placeholder:\n${sparse}`);
+  assert.ok(!sparse.includes('Location:'), 'no coordinates line when there is no pin');
+
+  const helper = helperShareText({
+    name: 'Meghali', districts_covered: ['Sivasagar'], areas_text: 'Amguri',
+    what_given: 'Water, Food', boat_available: true, contact_number: '6003547586',
+    lat: 26.98, lng: 94.63,
+  }, t, 0);
+  assert.ok(helper.includes('Meghali') && helper.includes('6003547586') && helper.includes('Amguri'));
+  assert.ok(!/undefined|null|NaN/.test(helper), 'helper share text is clean');
+}
 
 console.log('selfcheck: all assertions passed');

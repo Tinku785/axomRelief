@@ -16,8 +16,8 @@ export default function MapModal({ markers, onClose }) {
       <div className="map-modal__bar">
         <span className="map-modal__title">{t.mapTitle}</span>
         <div className="map-legend">
-          <span className="map-legend__item"><i className="relief-pin relief-pin--dot" style={{ background: '#2E7D4A' }} /> {t.peopleNeedHelp}</span>
-          <span className="map-legend__item"><i className="relief-pin relief-pin--dot" style={{ background: '#C0632A' }} /> {t.activeRescuers}</span>
+          <span className="map-legend__item"><i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} /> {t.peopleNeedHelp}</span>
+          <span className="map-legend__item"><i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} /> {t.activeRescuers}</span>
         </div>
         <button className="sheet__close" onClick={onClose} aria-label={t.close}>✕</button>
       </div>

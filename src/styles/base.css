@@ -348,6 +348,31 @@ textarea.input { resize: vertical; }
 .placard-orange { border: 1.5px solid var(--orange); box-shadow: 0 4px 14px rgba(192, 99, 42, 0.22); }
 .placard-orange:hover { background: var(--orange-bg); box-shadow: 0 8px 22px rgba(192, 99, 42, 0.3); }
 
+/* The "show me the other side" buttons, sitting in row 2 of the placard grid.
+   Solid fill so they read as actions rather than as more cards. */
+.cta {
+  border: none;
+  border-radius: 12px;
+  padding: 14px 10px;
+  width: 100%;
+  cursor: pointer;
+  color: #fff;
+  font: 700 14px/1.25 var(--font);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.cta:active { transform: translateY(1px); }
+
+.cta-green { background: var(--green); box-shadow: 0 4px 14px rgba(46, 125, 74, 0.28); }
+.cta-green:hover { background: var(--green-hover); box-shadow: 0 8px 22px rgba(46, 125, 74, 0.36); }
+.cta-orange { background: var(--orange); box-shadow: 0 4px 14px rgba(192, 99, 42, 0.28); }
+.cta-orange:hover { background: var(--orange-hover); box-shadow: 0 8px 22px rgba(192, 99, 42, 0.36); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cta { transition: none; }
+  .cta:active { transform: none; }
+}
+
 .placard__icon { width: 56px; height: 56px; object-fit: contain; }
 .placard__title-green { font: 700 16px/1.25 var(--font); color: var(--green); }
 .placard__title-orange { font: 700 16px/1.25 var(--font); color: var(--orange); }
@@ -473,6 +498,45 @@ textarea.input { resize: vertical; }
   font: 700 11.5px var(--font);
 }
 .match-badge--none { background: var(--border-lighter); color: var(--text-tertiary); }
+
+/* District / when filters above the request list. */
+.filter-row { display: flex; gap: 10px; margin-top: 10px; }
+.filter { flex: 1; min-width: 0; }
+.filter__label {
+  display: block;
+  font: 600 11.5px var(--font);
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.status-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+
+/* Outlined so an unanswered request reads as urgent without a wall of red. */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1.5px solid;
+  border-radius: 999px;
+  font: 700 11.5px var(--font);
+  letter-spacing: 0.2px;
+}
+
+.share-btn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font: 700 12.5px var(--font);
+  cursor: pointer;
+}
+.share-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+.status-row__who { font: 12px var(--font); color: var(--text-secondary); }
+
+/* Resolved: still readable, clearly finished, and off the map. */
+.request-card--done { opacity: 0.55; background: var(--border-lighter); }
+.request-card--done .request-card__name { text-decoration: line-through; }
+
 
 /* Plain text button: "+ Add another number", the form fold toggle. */
 .link-btn {

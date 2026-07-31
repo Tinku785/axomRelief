@@ -34,7 +34,7 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
 
-        {!isAdmin && <SiteFooter />}
+        {!isAdmin && <SiteFooter showNews={pathname === '/'} />}
       </div>
     </div>
   );

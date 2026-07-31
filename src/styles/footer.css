@@ -1,7 +1,7 @@
 .news-band {
   background: var(--orange-bg);
   border-top: 1px solid var(--orange-border);
-  padding: 18px 14px;
+  padding: 14px;
 }
 
 .news-band__head {
@@ -20,6 +20,16 @@
 }
 
 .news-band__title { font: 800 14.5px var(--font); color: var(--orange-hover); }
+
+/* Four cards tall, then it scrolls — on its own, or under a finger. Capping
+   this is what gives the landing page its breathing room back. */
+.news-scroll {
+  max-height: 232px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
 
 .news-card {
   background: #fff;

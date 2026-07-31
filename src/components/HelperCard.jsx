@@ -1,6 +1,8 @@
 import { useLang } from '../context/LangContext';
 import { toTel } from '../utils/time';
 import { phoneList } from '../utils/phone';
+import { helperShareText } from '../utils/share';
+import ShareButton from './ShareButton';
 
 // variant "full" — used on Home (bold name, stacked meta lines, filled call button)
 // variant "compact" — used at the bottom of the Request form (smaller name, one meta line, outline call button)
@@ -27,6 +29,10 @@ export default function HelperCard({ helper, variant = 'full' }) {
         <span className={`badge ${helper.boat_available ? 'badge-boat-yes' : 'badge-boat-no'}`}>{boatLabel}</span>
       </div>
       {helper.notes && <div className="request-card__notes">{helper.notes}</div>}
+      <ShareButton
+        title={helper.name}
+        build={() => helperShareText(helper, t, lang)}
+      />
       {phoneList(helper).map((p) => (
         <a
           key={p}

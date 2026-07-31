@@ -30,7 +30,7 @@ export const PRIORITY_META = {
 
 export const PRIORITY_ORDER = ['critical', 'urgent', 'needed'];
 
-export const RESCUER_MARK = { color: '#2E7D4A', shape: '✔' };
+export const RESCUER_MARK = { color: 'var(--green)', shape: '✔' };
 
 // How many of a request's needs this rescuer ticked they can bring. "other" is
 // free text on both sides, so it can't be cross-referenced and doesn't count.

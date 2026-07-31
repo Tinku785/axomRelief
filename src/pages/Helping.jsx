@@ -5,15 +5,17 @@ import { needLabel, DISTRICTS, NEEDS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER, matchCount, sortByMatch } from '../utils/priority';
 import { requestsToMarkers, helpersToMarkers } from '../utils/mapGeo';
 import { contactsError, phoneList } from '../utils/phone';
+import { requestShareText } from '../utils/share';
 import { isRateLimited } from '../utils/rateLimit';
 import { useReliefData } from '../hooks/useReliefData';
 import { registerHelper } from '../api/helpers';
+import { STATUS_META, statusOf, isResolved } from '../utils/status';
 import { supabaseConfigured } from '../supabaseClient';
-import { timeAgo, toTel } from '../utils/time';
+import { timeAgo, formatDate, matchesWhen, WHEN_OPTIONS, toTel } from '../utils/time';
 import ReliefMap from '../components/ReliefMap';
 import MapModal from '../components/MapModal';
-import HelperCard from '../components/HelperCard';
 import PhoneFields from '../components/PhoneFields';
+import ShareButton from '../components/ShareButton';
 import TurnstileWidget from '../components/TurnstileWidget';
 import Pager, { pageSlice } from '../components/Pager';
 
@@ -32,14 +34,14 @@ export default function Helping() {
   const [registered, setRegistered] = useState(false);
   const [helperError, setHelperError] = useState('');
   const [registering, setRegistering] = useState(false);
-  // Arriving from "See who is helping" means the visitor wants the lists, not
-  // the sign-up form — so the form starts folded away rather than filling the
-  // first screen.
-  const [formOpen, setFormOpen] = useState(!hash);
+  // Always open: this page exists to sign rescuers up, and a folded form on
+  // arrival reads as "nothing to do here". The chevron still collapses it.
+  const [formOpen, setFormOpen] = useState(true);
 
   const [fPrio, setFPrio] = useState('All');
+  const [fDistrict, setFDistrict] = useState('All');
+  const [fWhen, setFWhen] = useState('all');
   const [page, setPage] = useState(0);
-  const [helperPage, setHelperPage] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
   const [focus, setFocus] = useState(null);
   const [company, setCompany] = useState(''); // honeypot
@@ -107,15 +109,25 @@ export default function Helping() {
     }
   };
 
-  const byPrio = fPrio === 'All' ? requests : requests.filter((r) => r.priority === fPrio);
+  const filtered = requests.filter((r) => (
+    (fPrio === 'All' || r.priority === fPrio)
+    && (fDistrict === 'All' || r.district === fDistrict)
+    && matchesWhen(r.created_at, fWhen)
+  ));
   // Once a rescuer has ticked what they can bring, the useful order is "who can
   // I actually help most" rather than "who posted last".
   const scoring = hf.supplies.some((s) => s !== 'other');
-  const visibleRequests = sortByMatch(byPrio, hf.supplies);
+  // Finished jobs sink to the bottom whatever else is going on. Stable sort, so
+  // the match/priority order above survives inside each group.
+  const visibleRequests = sortByMatch(filtered, hf.supplies)
+    .slice()
+    .sort((a, b) => Number(isResolved(a)) - Number(isResolved(b)));
   const pageRequests = pageSlice(visibleRequests, page);
 
+  // null, not PRIORITY_META: requesters are plain green here so the pin colours
+  // mean the same thing on every map in the app — green asks, orange answers.
   const markers = [
-    ...requestsToMarkers(requests, PRIORITY_META),
+    ...requestsToMarkers(requests, null),
     ...helpersToMarkers(helpers),
   ];
 
@@ -126,7 +138,7 @@ export default function Helping() {
   };
 
   const showOnMap = (r) => {
-    setFocus({ lat: r.lat, lng: r.lng });
+    setFocus({ id: r.id, lat: r.lat, lng: r.lng });
     // No smooth behaviour: it is ignored under reduced-motion and in several
     // in-app browsers, which silently leaves the map off-screen.
     mapRef.current?.scrollIntoView({ block: 'center' });
@@ -253,22 +265,18 @@ export default function Helping() {
       <div style={{ padding: '20px 14px 0' }} ref={mapRef}>
         <ReliefMap markers={markers} interactive={false} focus={focus} onExpand={() => setMapOpen(true)}>
           <div className="map-badge">
-            <div className="map-badge__title">{t.mapTitle}</div>
+            <div className="map-legend">
+              <span className="map-legend__item">
+                <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} />
+                {t.legendRequesters} ({requests.length})
+              </span>
+              <span className="map-legend__item">
+                <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} />
+                {t.legendRescuers} ({helpers.length})
+              </span>
+            </div>
           </div>
         </ReliefMap>
-      </div>
-
-      <div id="helpers" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
-        <div className="section-heading">
-          <div className="section-title">{t.activeRescuers}</div>
-          <div className="section-meta">{helpers.length}</div>
-        </div>
-        <div className="stack gap-9" style={{ marginTop: 11 }}>
-          {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
-          {supabaseConfigured && !loading && !helpers.length && <div className="state-msg">{t.noHelpersHere}</div>}
-          {pageSlice(helpers, helperPage).map((h) => <HelperCard key={h.id} helper={h} />)}
-          <Pager total={helpers.length} page={helperPage} onPage={setHelperPage} />
-        </div>
       </div>
 
       <div id="list" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
@@ -296,22 +304,66 @@ export default function Helping() {
             );
           })}
         </div>
+        {/* Native selects on purpose: the OS picker is one tap, works offline
+            and is already translated. Two more chip rows would swamp the page. */}
+        <div className="filter-row">
+          <label className="filter">
+            <span className="filter__label">{t.filterDistrict}</span>
+            <select
+              className="input"
+              value={fDistrict}
+              onChange={(e) => { setFDistrict(e.target.value); setPage(0); }}
+            >
+              <option value="All">{t.allDistricts}</option>
+              {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </label>
+          <label className="filter">
+            <span className="filter__label">{t.filterWhen}</span>
+            <select
+              className="input"
+              value={fWhen}
+              onChange={(e) => { setFWhen(e.target.value); setPage(0); }}
+            >
+              {WHEN_OPTIONS.map((w) => (
+                <option key={w} value={w}>
+                  {{ all: t.whenAll, today: t.whenToday, recent: t.whenRecent, older: t.whenOlder }[w]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div style={{ padding: '12px 14px 0' }} className="stack gap-10">
         {!supabaseConfigured && <div className="state-msg">{t.notConfigured}</div>}
         {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
         {supabaseConfigured && !loading && !visibleRequests.length && (
-          <div className="state-msg">{t.noneYet}</div>
+          <div className="state-msg">{requests.length ? t.noMatch : t.noneYet}</div>
         )}
         {supabaseConfigured && !loading && pageRequests.map((r) => {
           const p = PRIORITY_META[r.priority];
           const matched = matchCount(hf.supplies, r);
+          const st = statusOf(r);
+          const sm = STATUS_META[st];
+          const done = st === 'resolved';
           return (
-            <div key={r.id} className="request-card" style={{ borderLeft: `5px solid ${p.color}` }}>
+            <div
+              key={r.id}
+              className={`request-card ${done ? 'request-card--done' : ''}`}
+              style={{ borderLeft: `5px solid ${done ? 'var(--border)' : p.color}` }}
+            >
               <div className="request-card__top">
                 <div className="request-card__name">{r.name}</div>
                 <span className="badge" style={{ background: p.bg, color: p.color }}>{p.shape} {t[r.priority]}</span>
+              </div>
+              <div className="status-row">
+                <span className="status-badge" style={{ background: sm.bg, color: sm.color, borderColor: sm.border }}>
+                  {t[sm.key]}
+                </span>
+                {st === 'in_progress' && r.helper_name && (
+                  <span className="status-row__who">{r.helper_name}</span>
+                )}
               </div>
               <div className="request-card__line">{r.location}, {r.district} · {r.num_people} {t.peopleWord}</div>
               <div className="request-card__needs">{needsText(r)}</div>
@@ -325,8 +377,11 @@ export default function Helping() {
               </div>
               {r.notes && <div className="request-card__notes">{r.notes}</div>}
               <div className="request-card__foot">
-                <span className="request-card__time">{timeAgo(r.created_at, lang)}</span>
+                <span className="request-card__time">
+                  {formatDate(r.created_at, lang)} · {timeAgo(r.created_at, lang)}
+                </span>
                 <div className="request-card__calls">
+                  <ShareButton title={r.name} build={() => requestShareText(r, t, lang)} />
                   {r.lat != null && (
                     <button type="button" className="map-btn" onClick={() => showOnMap(r)}>
                       📍 {t.showOnMap}
