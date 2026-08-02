@@ -75,7 +75,7 @@ function FocusOnPoint({ focus, markerRefs }) {
     // twice, and the second flyTo aborts the first flight and eats the event.
     // Jumping straight there needs no completion callback at all.
     map.setView([focus.lat, focus.lng], FOCUS_ZOOM);
-    // Same popup a tap on the pin gives — the point of "show on map" is to see
+    // Same popup a tap on the pin gives - the point of "show on map" is to see
     // who this is, not just where.
     markerRefs.current[focus.id]?.openPopup();
     // Deliberately keyed on object identity, not lat/lng: the caller stores
@@ -86,7 +86,7 @@ function FocusOnPoint({ focus, markerRefs }) {
 }
 
 // The legend badge and the expand button sit on top of the map, and a popup
-// pushed up by keepInView lands underneath them — the name and address end up
+// pushed up by keepInView lands underneath them - the name and address end up
 // behind the legend. They are decoration; the popup is the answer to a
 // question someone just asked, so the overlays get out of the way.
 function PopupWatcher({ onChange }) {
@@ -100,7 +100,7 @@ function PopupWatcher({ onChange }) {
 function MarkerPopup({ marker }) {
   const { t } = useLang();
   const [copied, setCopied] = useState(false);
-  // "26.971032, 94.676497" — what Google Maps' search box accepts verbatim.
+  // "26.971032, 94.676497" - what Google Maps' search box accepts verbatim.
   const coords = `${marker.position.lat.toFixed(6)}, ${marker.position.lng.toFixed(6)}`;
 
   const copyCoords = async () => {
@@ -189,7 +189,7 @@ export default function ReliefMap({
           >
             {/* The preview map is only ~240px tall, so a popup opened near the
                 top edge lands outside it and gets cut off by the rounded-corner
-                overflow — which is what made "See on Google Maps" unclickable.
+                overflow - which is what made "See on Google Maps" unclickable.
                 keepInView pans the map to hold the whole popup inside. */}
             <Popup autoPan keepInView autoPanPadding={[12, 12]} maxWidth={260}>
               <MarkerPopup marker={m} />

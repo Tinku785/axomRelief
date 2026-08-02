@@ -4,6 +4,8 @@ import { useFooterData } from '../context/FooterDataContext';
 import { supabaseConfigured } from '../supabaseClient';
 import { timeAgo, formatDateTime, toTel } from '../utils/time';
 import FeedbackSheet from './FeedbackSheet';
+import Sheet from './Sheet';
+import ClampText from './ClampText';
 
 // The people running this, in the order they should be tried. Not in the
 // database: these are the operators, not editable helpline rows.
@@ -15,23 +17,7 @@ const CONTACTS = [
   ['Ankita Bhagawati', '+91 99546 49124'],
 ];
 
-function Sheet({ title, onClose, children }) {
-  const { t } = useLang();
-  return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__head">
-          <div className="sheet__title">{title}</div>
-          <button className="sheet__close" onClick={onClose} aria-label={t.close}>✕</button>
-        </div>
-        {children}
-        <button className="btn btn-green" onClick={onClose}>{t.close}</button>
-      </div>
-    </div>
-  );
-}
-
-// One pixel per tick — about five seconds per update card, which is reading
+// One pixel per tick - about five seconds per update card, which is reading
 // pace rather than ticker pace.
 const SCROLL_MS = 60;
 
@@ -88,6 +74,10 @@ export default function SiteFooter({ showNews = false }) {
 
   return (
     <div style={{ marginTop: 30 }}>
+      {/* People keep offering money. Saying so once, in plain sight, is kinder
+          than letting them ask and be turned down one at a time. */}
+      <div className="no-donations">{t.noDonations}</div>
+
       {showNews && (
         <div className="news-band">
           <div className="news-band__head">
@@ -103,7 +93,7 @@ export default function SiteFooter({ showNews = false }) {
             <NewsScroller>
               {news.slice(0, NEWS_LIMIT).map((n) => (
                 <div className="news-card" key={n.id}>
-                  <div className="news-card__text">{n.message}</div>
+                  <ClampText text={n.message} className="news-card__text" lines={2} />
                   <div className="news-card__time">
                     {formatDateTime(n.created_at, lang)} · {timeAgo(n.created_at, lang)}
                   </div>
@@ -134,6 +124,7 @@ export default function SiteFooter({ showNews = false }) {
           <button className="app-footer__link" onClick={() => setAboutOpen(true)}>{t.aboutUs}</button>
           <button className="app-footer__link" onClick={() => setContactOpen(true)}>{t.contactUs}</button>
           <button className="app-footer__link" onClick={() => setFeedbackOpen(true)}>{t.feedback}</button>
+          <a className="app-footer__link" href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
         </nav>
         <div className="app-footer__meta">AxomRelief v1, 2026</div>
       </div>

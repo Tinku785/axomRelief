@@ -57,7 +57,7 @@ export default function AdminLogin() {
           autoComplete="current-password"
           required
         />
-        {!supabaseConfigured && <div className="form-error">Backend not configured — see .env.example.</div>}
+        {!supabaseConfigured && <div className="form-error">Backend not configured - see .env.example.</div>}
         {error && <div className="form-error">{error}</div>}
         <button className="btn" style={{ background: 'var(--text)', color: '#fff' }} type="submit" disabled={busy || !supabaseConfigured}>
           {busy ? 'Signing in…' : 'Sign in'}

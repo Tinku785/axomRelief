@@ -21,7 +21,7 @@
 
 .news-band__title { font: 800 14.5px var(--font); color: var(--orange-hover); }
 
-/* Four cards tall, then it scrolls — on its own, or under a finger. Capping
+/* Four cards tall, then it scrolls - on its own, or under a finger. Capping
    this is what gives the landing page its breathing room back. */
 .news-scroll {
   max-height: 232px;
@@ -88,6 +88,17 @@
 }
 
 /* ── App footer: its own band under the helplines ───────────────────── */
+
+.no-donations {
+  margin: 0 14px 20px;
+  padding: 11px 13px;
+  border: 1.5px dashed var(--orange-border);
+  border-radius: var(--radius-lg);
+  background: var(--orange-bg);
+  font: 12.5px/1.6 var(--font);
+  color: var(--text-secondary);
+  text-align: center;
+}
 
 .app-footer {
   background: var(--surface);

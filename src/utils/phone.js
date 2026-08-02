@@ -4,7 +4,7 @@ const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 // Strips spaces and dashes, and removes a recognised country/trunk prefix so
 // pasted numbers still pass. Anything else over-length is left intact so it
 // fails validation rather than being silently truncated into a real but
-// wrong number — a rescuer calling the wrong person is worse than a retype.
+// wrong number - a rescuer calling the wrong person is worse than a retype.
 export function normalizePhone(raw) {
   const digits = String(raw ?? '').replace(/\D/g, '');
   if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);

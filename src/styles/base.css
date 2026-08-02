@@ -22,7 +22,7 @@ button { touch-action: manipulation; }
 
 img { max-width: 100%; display: block; }
 
-/* ── App shell — centred mobile-width column on any screen size ───────── */
+/* ── App shell - centred mobile-width column on any screen size ───────── */
 
 .app-root {
   min-height: 100vh;
@@ -343,13 +343,55 @@ textarea.input { resize: vertical; }
   .placard:active { transform: none; }
 }
 
-.placard-green { border: 1.5px solid var(--green); box-shadow: 0 4px 14px rgba(46, 125, 74, 0.22); }
-.placard-green:hover { background: var(--green-bg); box-shadow: 0 8px 22px rgba(46, 125, 74, 0.3); }
-.placard-orange { border: 1.5px solid var(--orange); box-shadow: 0 4px 14px rgba(192, 99, 42, 0.22); }
-.placard-orange:hover { background: var(--orange-bg); box-shadow: 0 8px 22px rgba(192, 99, 42, 0.3); }
+/* Three layers: a hairline contact shadow, a mid lift, and a wide tinted
+   glow. One soft blur at this size just looks out of focus. */
+.placard-green {
+  border: 1.5px solid var(--green);
+  box-shadow:
+    0 1px 2px rgba(20, 45, 30, 0.18),
+    0 6px 14px rgba(46, 125, 74, 0.26),
+    0 16px 34px rgba(46, 125, 74, 0.28);
+}
+.placard-green:hover {
+  background: var(--green-bg);
+  box-shadow:
+    0 2px 4px rgba(20, 45, 30, 0.22),
+    0 10px 20px rgba(46, 125, 74, 0.32),
+    0 22px 44px rgba(46, 125, 74, 0.34);
+}
+.placard-orange {
+  border: 1.5px solid var(--orange);
+  box-shadow:
+    0 1px 2px rgba(80, 38, 12, 0.18),
+    0 6px 14px rgba(192, 99, 42, 0.26),
+    0 16px 34px rgba(192, 99, 42, 0.28);
+}
+.placard-orange:hover {
+  background: var(--orange-bg);
+  box-shadow:
+    0 2px 4px rgba(80, 38, 12, 0.22),
+    0 10px 20px rgba(192, 99, 42, 0.32),
+    0 22px 44px rgba(192, 99, 42, 0.34);
+}
 
-/* The "show me the other side" buttons, sitting in row 2 of the placard grid.
-   Solid fill so they read as actions rather than as more cards. */
+/* The "show me the other side" bar. Sticks under the header once the placards
+   scroll away, so the way into either list is always one tap off. */
+.cta-bar {
+  position: sticky;
+  /* Clears the sticky header rather than sliding under it. */
+  top: 56px;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* Wide enough that a button at its 1.03 peak, ring and all, still clears its
+     neighbour - at the old 12px they met in the middle of every beat. */
+  gap: 22px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-lighter);
+}
+
+/* Solid fill so they read as actions rather than as more cards. */
 .cta {
   border: none;
   border-radius: 12px;
@@ -361,21 +403,85 @@ textarea.input { resize: vertical; }
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
+/* These two are the only way into the lists, so on an otherwise still page
+   they have to read as tappable from across the room: the button breathes and
+   a ring pushes out from under it. */
+@keyframes cta-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* The ring is a pseudo-element rather than the button's own box-shadow, so it
+   can expand and fade without fighting the resting shadow on each colour. */
+@keyframes cta-ring {
+  0% { box-shadow: 0 0 0 0 var(--cta-ring); opacity: 1; }
+  70% { box-shadow: 0 0 0 9px var(--cta-ring); opacity: 0; }
+  100% { box-shadow: 0 0 0 0 var(--cta-ring); opacity: 0; }
+}
+
+.cta {
+  position: relative;
+  animation: cta-pulse 1.8s ease-in-out infinite;
+}
+
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: cta-ring 1.8s ease-out infinite;
+}
+
+/* Offset so the pair breathes alternately instead of thumping in unison. */
+.cta-green, .cta-green::after { animation-delay: 0.9s; }
+
+/* Hover and press are direct feedback and must win over the idle animation. */
+.cta:hover, .cta:active, .cta:focus-visible { animation: none; }
+.cta:hover::after, .cta:active::after, .cta:focus-visible::after { animation: none; opacity: 0; }
 .cta:active { transform: translateY(1px); }
 
-.cta-green { background: var(--green); box-shadow: 0 4px 14px rgba(46, 125, 74, 0.28); }
-.cta-green:hover { background: var(--green-hover); box-shadow: 0 8px 22px rgba(46, 125, 74, 0.36); }
-.cta-orange { background: var(--orange); box-shadow: 0 4px 14px rgba(192, 99, 42, 0.28); }
-.cta-orange:hover { background: var(--orange-hover); box-shadow: 0 8px 22px rgba(192, 99, 42, 0.36); }
+/* Two stacked shadows: a tight dark one for the lifted edge and a wide tinted
+   one for the glow. A single soft shadow reads as blur, not as a raised
+   button. */
+.cta-green {
+  --cta-ring: rgba(46, 125, 74, 0.55);
+  background: var(--green);
+  box-shadow: 0 2px 4px rgba(20, 45, 30, 0.28), 0 8px 20px rgba(46, 125, 74, 0.42);
+}
+.cta-green:hover {
+  background: var(--green-hover);
+  box-shadow: 0 3px 6px rgba(20, 45, 30, 0.34), 0 12px 28px rgba(46, 125, 74, 0.5);
+}
+.cta-orange {
+  --cta-ring: rgba(192, 99, 42, 0.55);
+  background: var(--orange);
+  box-shadow: 0 2px 4px rgba(80, 38, 12, 0.28), 0 8px 20px rgba(192, 99, 42, 0.42);
+}
+.cta-orange:hover {
+  background: var(--orange-hover);
+  box-shadow: 0 3px 6px rgba(80, 38, 12, 0.34), 0 12px 28px rgba(192, 99, 42, 0.5);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .cta { transition: none; }
+  .cta { transition: none; animation: none; }
+  .cta::after { animation: none; opacity: 0; }
   .cta:active { transform: none; }
 }
 
 .placard__icon { width: 56px; height: 56px; object-fit: contain; }
-.placard__title-green { font: 700 16px/1.25 var(--font); color: var(--green); }
-.placard__title-orange { font: 700 16px/1.25 var(--font); color: var(--orange); }
+
+.placard__title-green,
+.placard__title-orange {
+  font: 700 16px/1.25 var(--font);
+  text-decoration: underline;
+  /* Clear of the descenders in "helping" rather than striking through them. */
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.placard__title-green { color: var(--green); }
+.placard__title-orange { color: var(--orange); }
 
 /* ── Section headings ───────────────────────────────────────────────── */
 
@@ -389,6 +495,9 @@ textarea.input { resize: vertical; }
 }
 
 .section-title { font: 800 15.5px var(--font); color: var(--text); }
+/* The number leads: "17 People requiring help" answers "how bad is it" before
+   the eye reaches the label. */
+.section-count { font: 800 18px var(--font); color: var(--green); }
 .section-meta { font: 11.5px var(--font); color: var(--text-tertiary); }
 .section-hint { font: 12px/1.5 var(--font); color: var(--text-tertiary); margin-top: 2px; }
 
@@ -421,6 +530,9 @@ textarea.input { resize: vertical; }
 .badge-boat-yes { background: var(--green-bg); color: var(--green); }
 .badge-boat-no { background: #F2F5F8; color: var(--text-tertiary); }
 
+.helper-card__districts { font: 600 12.5px var(--font); color: var(--text); margin-top: 3px; }
+.helper-card__label { color: var(--text-tertiary); font-weight: 600; }
+
 .helper-card__call {
   display: block;
   text-align: center;
@@ -451,14 +563,17 @@ textarea.input { resize: vertical; }
 
 .request-card--en-route { border-color: #CCE9CC; }
 
+/* Two badges beside a long name would squeeze the name into a two-word
+   column, so the badge row drops to its own line rather than crushing it. */
 .request-card__top {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px 8px;
   align-items: flex-start;
 }
 
-.request-card__name { font: 700 15px var(--font); color: var(--text); }
+.request-card__name { font: 700 15px var(--font); color: var(--text); flex: 1 1 55%; min-width: 0; }
 .request-card__line { font: 13px/1.6 var(--font); color: var(--text-secondary); }
 .request-card__needs { font: 13px/1.6 var(--font); color: var(--text); }
 .request-card__foot {
@@ -499,9 +614,28 @@ textarea.input { resize: vertical; }
 }
 .match-badge--none { background: var(--border-lighter); color: var(--text-tertiary); }
 
-/* District / when filters above the request list. */
-.filter-row { display: flex; gap: 10px; margin-top: 10px; }
-.filter { flex: 1; min-width: 0; }
+/* Filters used to be loose controls that read as page furniture and got
+   scrolled past. One tinted panel above the list makes them look like the
+   thing you touch before reading 57 cards. */
+.filter-panel {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--green-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.filter-panel__title {
+  font: 800 12px var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 9px;
+}
+
+/* Two per row on a phone, so four controls do not squeeze to unreadable. */
+.filter-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.filter { flex: 1 1 calc(50% - 5px); min-width: 130px; }
 .filter__label {
   display: block;
   font: 600 11.5px var(--font);
@@ -509,7 +643,6 @@ textarea.input { resize: vertical; }
   margin-bottom: 4px;
 }
 
-.status-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 
 /* Outlined so an unanswered request reads as urgent without a wall of red. */
 .status-badge {
@@ -537,6 +670,144 @@ textarea.input { resize: vertical; }
 .request-card--done { opacity: 0.55; background: var(--border-lighter); }
 .request-card--done .request-card__name { text-decoration: line-through; }
 
+
+/* Title left, search right - on a narrow phone the search drops to its own
+   line rather than shrinking to a slot too small to read. */
+.filter-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.filter-panel__head .filter-panel__title { margin-bottom: 0; flex: none; }
+.filter-panel__head .search-row { flex: 1 1 190px; margin-bottom: 0; }
+.filter-panel__head .search-row .input { padding: 9px 74px 9px 11px; font-size: 14px; }
+
+.search-row { position: relative; margin-bottom: 10px; }
+.search-row .input { padding-right: 74px; }
+.search-row__clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--border-lighter);
+  color: var(--text-secondary);
+  font: 600 12px var(--font);
+  cursor: pointer;
+}
+
+/* One line until asked otherwise. */
+.clamp__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Several lines: -webkit-line-clamp is the only cross-browser way to cut at a
+   line boundary, and it is supported everywhere this app runs. */
+.clamp__text--multi {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--clamp-lines, 2);
+  line-clamp: var(--clamp-lines, 2);
+  overflow: hidden;
+}
+
+.clamp__text--open {
+  white-space: normal;
+  overflow: visible;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+.clamp__more { margin-top: 2px; font-size: 12px; }
+
+.pager__gap { padding: 8px 2px; color: var(--text-tertiary); font: 600 13px var(--font); }
+
+/* Mandatory-field marker. */
+.req-star { color: var(--critical); font-weight: 700; }
+
+/* "+2" chip next to the first call button; the rest open on the line below. */
+.more-numbers {
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font: 700 12.5px var(--font);
+  cursor: pointer;
+}
+.more-numbers:hover { border-color: var(--green); color: var(--green); }
+.more-numbers__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  width: 100%;
+  margin-top: 7px;
+}
+
+/* Arrivals while the page is open. Sticky so it stays reachable as the reader
+   scrolls the queue. */
+.new-pill {
+  position: sticky;
+  top: 68px;
+  z-index: 5;
+  align-self: center;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+  font: 700 13px var(--font);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(192, 99, 42, 0.35);
+}
+.new-pill:hover { background: var(--orange-hover); }
+
+.request-card--new { border-color: var(--orange); }
+
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 14px;
+  font: 13px/1.5 var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.terms-check input { margin-top: 2px; flex: none; width: 18px; height: 18px; accent-color: var(--green); }
+.terms-check a { font-weight: 700; text-decoration: underline; }
+
+/* ── Terms & Conditions page ────────────────────────────────────────── */
+
+.terms { padding: 20px 16px 40px; }
+.terms__head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.terms__title { font: 800 19px/1.3 var(--font); color: var(--text); margin: 0; }
+.terms__sub { font: 12.5px/1.5 var(--font); color: var(--text-secondary); margin-top: 3px; }
+.terms__list { margin: 0; padding-left: 20px; }
+.terms__list li { font: 13.5px/1.65 var(--font); color: var(--text); margin-bottom: 12px; }
+.terms__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.terms__declaration {
+  margin-top: 18px;
+  padding: 13px 14px;
+  border: 1.5px solid var(--green);
+  background: var(--green-bg);
+  border-radius: var(--radius-lg);
+  font: 13.5px/1.65 var(--font);
+  color: var(--text);
+}
 
 /* Plain text button: "+ Add another number", the form fold toggle. */
 .link-btn {

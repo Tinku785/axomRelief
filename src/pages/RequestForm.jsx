@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
 import { DISTRICTS, NEEDS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER } from '../utils/priority';
+import { emptyFilters, filterHelpers } from '../utils/listFilter';
 import { contactsError } from '../utils/phone';
 import { isRateLimited } from '../utils/rateLimit';
 import { useReliefData } from '../hooks/useReliefData';
@@ -10,6 +11,9 @@ import { submitRequest } from '../api/requests';
 import { supabaseConfigured } from '../supabaseClient';
 import TurnstileWidget from '../components/TurnstileWidget';
 import HelperCard from '../components/HelperCard';
+import TermsCheckbox from '../components/TermsCheckbox';
+import Req from '../components/Req';
+import ListControls from '../components/ListControls';
 import PhoneFields from '../components/PhoneFields';
 import Pager, { pageSlice } from '../components/Pager';
 
@@ -26,10 +30,9 @@ export default function RequestForm() {
   const { helpers, loading } = useReliefData();
 
   const [form, setForm] = useState(emptyForm);
-  const districtHelpers = helpers.filter(
-    (h) => !h.districts_covered?.length || h.districts_covered.includes(form.district)
-  );
   const [helperPage, setHelperPage] = useState(0);
+  const [agreed, setAgreed] = useState(false);
+  const [helperFilters, setHelperFilters] = useState(emptyFilters);
   const [company, setCompany] = useState(''); // honeypot
   const [turnstileToken, setTurnstileToken] = useState('');
   const [geoBusy, setGeoBusy] = useState(false);
@@ -37,9 +40,13 @@ export default function RequestForm() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Below the state it reads, not above it: `const` is in the temporal dead
+  // zone until its declaration runs, so hoisting this crashed the whole page.
+  const districtHelpers = filterHelpers(helpers, helperFilters, lang);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  // "They are helping" on the home screen lands here, at the rescuer list —
+  // "They are helping" on the home screen lands here, at the rescuer list -
   // which only exists once the data has loaded.
   useEffect(() => {
     if (!hash || loading) return;
@@ -82,7 +89,7 @@ export default function RequestForm() {
       setGeoBusy(false);
       if (err.code === err.PERMISSION_DENIED) {
         setGeoError(lang
-          ? 'অৱস্থানৰ অনুমতি নাই — ব্ৰাউজাৰত অনুমতি দিয়ক, বা ওপৰত ঠিকনা লিখক।'
+          ? 'অৱস্থানৰ অনুমতি নাই - ব্ৰাউজাৰত অনুমতি দিয়ক, বা ওপৰত ঠিকনা লিখক।'
           : 'Location permission denied. Allow it in your browser settings, or just type your address above.');
       } else {
         setGeoError(lang
@@ -92,7 +99,7 @@ export default function RequestForm() {
     };
 
     // GPS indoors often never returns, which is what made this fail outright.
-    // Try a precise fix first, then fall back to the coarse network position —
+    // Try a precise fix first, then fall back to the coarse network position -
     // a 1km-accurate pin still tells a rescuer which village to head for.
     navigator.geolocation.getCurrentPosition(
       onOk,
@@ -110,7 +117,7 @@ export default function RequestForm() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (company) return; // honeypot tripped — silently drop
+    if (company) return; // honeypot tripped - silently drop
 
     if (!form.name || !form.location || !form.contacts[0] || !form.priority || !form.needs.length) {
       setFormError(lang ? 'নাম, ঠিকনা, সামগ্ৰী, ফোন নম্বৰ আৰু অগ্ৰাধিকাৰ দিয়ক।' : 'Please fill name, address, supplies, phone number and priority.');
@@ -119,6 +126,10 @@ export default function RequestForm() {
     const phoneErr = contactsError(form.contacts, lang);
     if (phoneErr) {
       setFormError(phoneErr);
+      return;
+    }
+    if (!agreed) {
+      setFormError(t.termsRequired);
       return;
     }
     if (!turnstileToken) {
@@ -147,7 +158,7 @@ export default function RequestForm() {
 
       <form style={{ padding: '0 14px' }} onSubmit={onSubmit}>
         <label className="field">
-          <div className="field__label">{t.yourName}</div>
+          <div className="field__label">{t.yourName}<Req /></div>
           <input className="input" value={form.name} onChange={set('name')} placeholder={t.phName} required />
         </label>
         {/* Extra numbers are what gets someone reached when the first phone is
@@ -159,7 +170,7 @@ export default function RequestForm() {
           labelFirst
         />
         <label className="field">
-          <div className="field__label">{t.address}</div>
+          <div className="field__label">{t.address}<Req /></div>
           <textarea className="input" rows={2} value={form.location} onChange={set('location')} placeholder={t.phLoc} required />
         </label>
         <label className="field">
@@ -167,8 +178,7 @@ export default function RequestForm() {
           <select
             className="input"
             value={form.district}
-            // A different district is a different rescuer list, so start it over.
-            onChange={(e) => { set('district')(e); setHelperPage(0); }}
+            onChange={set('district')}
           >
             {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -209,7 +219,7 @@ export default function RequestForm() {
         </label>
 
         <div className="field">
-          <div className="field__label" style={{ marginBottom: 7 }}>{t.supplies}</div>
+          <div className="field__label" style={{ marginBottom: 7 }}>{t.supplies}<Req /></div>
           <div className="chip-row">
             {NEEDS.map((n) => {
               const on = form.needs.includes(n.key);
@@ -237,7 +247,7 @@ export default function RequestForm() {
         </div>
 
         <div className="field">
-          <div className="field__label" style={{ marginBottom: 7 }}>{t.priority}</div>
+          <div className="field__label" style={{ marginBottom: 7 }}>{t.priority}<Req /></div>
           {PRIORITY_ORDER.map((key) => {
             const p = PRIORITY_META[key];
             const on = form.priority === key;
@@ -294,6 +304,8 @@ export default function RequestForm() {
           <input tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} />
         </label>
 
+        <TermsCheckbox checked={agreed} onChange={setAgreed} />
+
         <TurnstileWidget onToken={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
         {formError && <div className="form-error">{formError}</div>}
@@ -308,9 +320,14 @@ export default function RequestForm() {
         style={{ margin: '28px 14px 0', borderTop: '1.5px solid var(--border-light)', paddingTop: 18, scrollMarginTop: 76 }}
       >
         <div className="section-heading">
-          <div className="section-title">{t.activeRescuers}</div>
-          <div className="section-meta">{districtHelpers.length}</div>
+          <div className="section-title">
+            <span className="section-count">{districtHelpers.length}</span> {t.activeRescuers}
+          </div>
         </div>
+        <ListControls
+          filters={helperFilters}
+          onChange={(next) => { setHelperFilters(next); setHelperPage(0); }}
+        />
         <div className="stack gap-9" style={{ marginTop: 11 }}>
           {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
           {!loading && !districtHelpers.length && <div className="state-msg">{t.noHelpersHere}</div>}

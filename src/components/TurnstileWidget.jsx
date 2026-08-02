@@ -28,14 +28,14 @@ export default function TurnstileWidget({ onToken, onExpire }) {
   const [errorCode, setErrorCode] = useState('');
   // Error 110200 is Cloudflare rejecting the *hostname*, not the key. A real
   // key only works on the hostnames listed on the widget, and localhost is not
-  // one of them unless you add it — so on localhost always use the test key.
+  // one of them unless you add it - so on localhost always use the test key.
   // Any 110200 left in production means the deployed domain is missing from
   // that list; add it in the Turnstile dashboard.
   const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
   const siteKey = (!isLocal && import.meta.env.VITE_TURNSTILE_SITE_KEY) || DEV_FALLBACK_SITE_KEY;
 
-  // If Turnstile itself cannot load — bad hostname config, blocked script,
-  // captive wifi — hand out a sentinel token rather than locking the form.
+  // If Turnstile itself cannot load - bad hostname config, blocked script,
+  // captive wifi - hand out a sentinel token rather than locking the form.
   // Abuse is stopped by the per-IP insert limit in the database, which a
   // browser cannot bypass, whereas a jammed widget stops a real flood victim
   // from asking for rescue. Availability wins on a relief helpline.

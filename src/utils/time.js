@@ -7,7 +7,7 @@ export function timeAgo(dateInput, lang) {
   return Math.round(hours / 24) + (lang ? ' দিন আগত' : ' d ago');
 }
 
-// "29 Jul 2026, 5:11 pm" — the news band needs a real date, not just "3 hr ago",
+// "29 Jul 2026, 5:11 pm" - the news band needs a real date, not just "3 hr ago",
 // so a reader can tell whether an update is from this flood or the last one.
 export function formatDateTime(dateInput, lang) {
   const d = new Date(dateInput);
@@ -17,7 +17,7 @@ export function formatDateTime(dateInput, lang) {
   });
 }
 
-// "29 Jul 2026" — the date a request was posted, shown on the card next to the
+// "29 Jul 2026" - the date a request was posted, shown on the card next to the
 // relative time. A rescuer scanning a list needs both: "2 d ago" for urgency,
 // the date for the notes they write down.
 export function formatDate(dateInput, lang) {

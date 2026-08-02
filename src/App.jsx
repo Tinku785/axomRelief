@@ -8,6 +8,7 @@ import RequestDone from './pages/RequestDone';
 import Helping from './pages/Helping';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import Terms from './pages/Terms';
 
 export default function App() {
   const { pathname, hash } = useLocation();
@@ -16,7 +17,7 @@ export default function App() {
 
   // The browser keeps the old scroll position across a route change, so after
   // submitting a long form you land on the confirmation page already scrolled
-  // past the confirmation. One place, covers every route — except a link that
+  // past the confirmation. One place, covers every route - except a link that
   // deliberately targets a section, which scrolls itself.
   useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname, hash]);
 
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/request" element={<RequestForm />} />
           <Route path="/request/done" element={<RequestDone />} />
           <Route path="/helping" element={<Helping />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>

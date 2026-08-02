@@ -38,10 +38,18 @@ export function matchCount(supplies, request) {
   return supplies.filter((s) => s !== 'other' && request.needs?.includes(s)).length;
 }
 
+// Oldest first by default. Someone who has been waiting since yesterday morning
+// is served before someone who posted five minutes ago - the API returns
+// newest-first, which is right for a news feed and wrong for a queue.
+export function byAge(rows, order = 'oldest') {
+  const oldestFirst = [...rows].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  return order === 'newest' ? oldestFirst.reverse() : oldestFirst;
+}
+
 // Best-matched first, priority breaking ties. Array.sort is stable, so equal
 // rows keep the newest-first order the API returned.
 // ponytail: match count only. Distance helper→needy is the obvious next factor
-// — add it here once helpers store a real pin rather than a district jitter.
+// - add it here once helpers store a real pin rather than a district jitter.
 export function sortByMatch(requests, supplies) {
   if (!supplies.some((s) => s !== 'other')) return requests;
   return [...requests].sort((a, b) =>

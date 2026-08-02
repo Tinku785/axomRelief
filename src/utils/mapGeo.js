@@ -12,7 +12,7 @@ export const DISTRICT_CENTERS = {
 export const REGION_CENTER = { lat: 26.92, lng: 94.62 };
 export const REGION_ZOOM = 9;
 
-// ~0.045 deg either side is roughly 5 km — enough to keep pins from stacking,
+// ~0.045 deg either side is roughly 5 km - enough to keep pins from stacking,
 // small enough that a pin stays inside its own district.
 const SPREAD = 0.09;
 

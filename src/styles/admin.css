@@ -66,6 +66,21 @@
 .admin-detail dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 .admin-detail a { color: var(--green); }
 
+.admin-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--green-bg);
+  font: 600 12.5px var(--font);
+  color: var(--text-secondary);
+}
+
 .admin-select {
   padding: 6px 8px;
   border: 1.5px solid var(--border);

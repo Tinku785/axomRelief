@@ -1,0 +1,12 @@
+# AxomRelief - a public flood helpline. The public pages, including the terms,
+# should be findable. The operator tooling should not be.
+#
+# ponytail: no Sitemap line. It has to be an absolute URL and the production
+# domain is not settled here - a wrong one is worse than none. Add it as
+# "Sitemap: https://<domain>/sitemap.xml" once the domain is fixed.
+
+User-agent: *
+Allow: /
+Allow: /terms
+Disallow: /admin
+Disallow: /admin/

@@ -1,5 +1,6 @@
 import { useLang } from '../context/LangContext';
 import { normalizePhone, MAX_NUMBERS } from '../utils/phone';
+import Req from './Req';
 
 // The requester form and the rescuer form ask for the same thing, so they ask
 // for it the same way. `numbers` is always at least ['']: index 0 is the
@@ -16,7 +17,7 @@ export default function PhoneFields({ numbers, onChange, labelFirst }) {
         // Index keys: rows have no id, and removing one is meant to shift the
         // values up with it.
         <div className="field" key={i}>
-          {i === 0 && labelFirst && <div className="field__label">{t.phone}</div>}
+          {i === 0 && labelFirst && <div className="field__label">{t.phone}<Req /></div>}
           <div className="alt-number">
             <input
               className="input"

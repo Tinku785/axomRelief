@@ -1,12 +1,15 @@
-/* ── Bottom sheet (location, help now, feedback) ───────────────────── */
+/* ── Sheet / dialog (about, contact, feedback, export choice) ───────── */
 
 .sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(20, 24, 29, 0.45);
   display: flex;
-  align-items: flex-end;
+  /* Centred, not anchored to the bottom edge: a question the reader has to
+     answer belongs in their line of sight, not at their thumb. */
+  align-items: center;
   justify-content: center;
+  padding: 16px;
   z-index: 65;
 }
 
@@ -14,11 +17,12 @@
   background: #fff;
   width: 100%;
   max-width: var(--shell-max-width);
-  border-radius: 16px 16px 0 0;
-  padding: 18px 16px 24px;
+  border-radius: 16px;
+  padding: 18px 16px 20px;
   box-sizing: border-box;
-  max-height: 92vh;
+  max-height: calc(100vh - 32px);
   overflow: auto;
+  box-shadow: 0 18px 50px rgba(20, 24, 29, 0.3);
 }
 
 .sheet__head {
@@ -261,7 +265,7 @@
 .map-info__title { font-weight: 700; color: #202124; }
 .map-info__sub { margin-top: 2px; font-size: 12px; color: #5F6368; }
 /* Leaflet ships `.leaflet-container a { color: #0078A8 }`, which outspecifies a
-   bare class — the call link and the Maps button were rendering in its default
+   bare class - the call link and the Maps button were rendering in its default
    blue, white-on-blue-on-green included. Matching its specificity fixes both. */
 .leaflet-container a.map-info__call {
   display: inline-block;

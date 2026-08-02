@@ -4,20 +4,26 @@ import { useLang } from '../context/LangContext';
 import { needLabel, DISTRICTS, NEEDS } from '../i18n/strings';
 import { PRIORITY_META, PRIORITY_ORDER, matchCount, sortByMatch } from '../utils/priority';
 import { requestsToMarkers, helpersToMarkers } from '../utils/mapGeo';
-import { contactsError, phoneList } from '../utils/phone';
+import { contactsError } from '../utils/phone';
 import { requestShareText } from '../utils/share';
+import { emptyFilters, filterRequests } from '../utils/listFilter';
 import { isRateLimited } from '../utils/rateLimit';
 import { useReliefData } from '../hooks/useReliefData';
 import { registerHelper } from '../api/helpers';
 import { STATUS_META, statusOf, isResolved } from '../utils/status';
 import { supabaseConfigured } from '../supabaseClient';
-import { timeAgo, formatDate, matchesWhen, WHEN_OPTIONS, toTel } from '../utils/time';
+import { timeAgo, formatDate } from '../utils/time';
 import ReliefMap from '../components/ReliefMap';
 import MapModal from '../components/MapModal';
 import PhoneFields from '../components/PhoneFields';
 import ShareButton from '../components/ShareButton';
+import ClampText from '../components/ClampText';
+import ListControls from '../components/ListControls';
+import PhoneButtons from '../components/PhoneButtons';
+import TermsCheckbox from '../components/TermsCheckbox';
 import TurnstileWidget from '../components/TurnstileWidget';
-import Pager, { pageSlice } from '../components/Pager';
+import Pager, { pageSlice, PAGE_SIZE } from '../components/Pager';
+import Req from '../components/Req';
 
 const emptyHelperForm = {
   name: '', contacts: [''], districts: [],
@@ -38,9 +44,12 @@ export default function Helping() {
   // arrival reads as "nothing to do here". The chevron still collapses it.
   const [formOpen, setFormOpen] = useState(true);
 
-  const [fPrio, setFPrio] = useState('All');
-  const [fDistrict, setFDistrict] = useState('All');
-  const [fWhen, setFWhen] = useState('all');
+  const [filters, setFilters] = useState(emptyFilters);
+  const [agreed, setAgreed] = useState(false);
+  // created_at of the newest request the reader has actually seen. Anything
+  // that arrives after this is what the "new requests" pill counts.
+  const [seenUpTo, setSeenUpTo] = useState(null);
+  const [jumpTo, setJumpTo] = useState(null);
   const [page, setPage] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
   const [focus, setFocus] = useState(null);
@@ -57,8 +66,37 @@ export default function Helping() {
     document.getElementById(hash.slice(1))?.scrollIntoView();
   }, [hash, loading]);
 
+  // First load establishes the baseline; everything newer is "new" until the
+  // reader taps the pill.
+  useEffect(() => {
+    if (seenUpTo || !requests.length) return;
+    setSeenUpTo(requests.reduce((max, r) => (r.created_at > max ? r.created_at : max), ''));
+  }, [requests, seenUpTo]);
+
+  const newOnes = seenUpTo ? requests.filter((r) => r.created_at > seenUpTo) : [];
+
+  // Oldest-first means the newest row is at the *end* of a paged list, so
+  // jumping to it is a page change plus a scroll, not just a scroll.
+  const jumpToNewest = () => {
+    const newest = newOnes.reduce((a, b) => (a.created_at > b.created_at ? a : b));
+    setSeenUpTo(newest.created_at);
+    const idx = visibleRequests.findIndex((r) => r.id === newest.id);
+    if (idx < 0) return; // filtered out of the current view
+    setPage(Math.floor(idx / PAGE_SIZE));
+    setJumpTo(newest.id); // scrolled by the effect below, once the page renders
+  };
+
+  // A rAF here fires before React has painted the new page, so the scroll
+  // lands on the old layout. An effect runs after the DOM is updated.
+  useEffect(() => {
+    if (!jumpTo) return;
+    document.getElementById(`req-${jumpTo}`)?.scrollIntoView({ block: 'center' });
+    setJumpTo(null);
+  }, [jumpTo, page]);
+
   // A new filter is a new list, so page 3 of the old one is meaningless.
-  const pickPrio = (v) => { setFPrio(v); setPage(0); };
+  const changeFilters = (next) => { setFilters(next); setPage(0); };
+  const pickPrio = (v) => changeFilters({ ...filters, priority: v });
 
   const toggleIn = (key, value) => {
     setHf((f) => ({
@@ -69,7 +107,7 @@ export default function Helping() {
 
   const submitHelper = async (e) => {
     e.preventDefault();
-    if (company) return; // honeypot tripped — silently drop
+    if (company) return; // honeypot tripped - silently drop
     if (!hf.name) {
       setHelperError(lang ? 'নাম দিয়ক।' : 'Please enter your name.');
       return;
@@ -85,6 +123,10 @@ export default function Helping() {
     }
     if (!hf.supplies.length) {
       setHelperError(lang ? 'আপুনি কি সামগ্ৰী দিব পাৰে বাছক।' : 'Select at least one supply you can bring.');
+      return;
+    }
+    if (!agreed) {
+      setHelperError(t.termsRequired);
       return;
     }
     if (!turnstileToken) {
@@ -109,23 +151,19 @@ export default function Helping() {
     }
   };
 
-  const filtered = requests.filter((r) => (
-    (fPrio === 'All' || r.priority === fPrio)
-    && (fDistrict === 'All' || r.district === fDistrict)
-    && matchesWhen(r.created_at, fWhen)
-  ));
+  const filtered = filterRequests(requests, filters, lang);
   // Once a rescuer has ticked what they can bring, the useful order is "who can
   // I actually help most" rather than "who posted last".
   const scoring = hf.supplies.some((s) => s !== 'other');
   // Finished jobs sink to the bottom whatever else is going on. Stable sort, so
-  // the match/priority order above survives inside each group.
+  // the match/age order above survives inside each group.
   const visibleRequests = sortByMatch(filtered, hf.supplies)
     .slice()
     .sort((a, b) => Number(isResolved(a)) - Number(isResolved(b)));
   const pageRequests = pageSlice(visibleRequests, page);
 
   // null, not PRIORITY_META: requesters are plain green here so the pin colours
-  // mean the same thing on every map in the app — green asks, orange answers.
+  // mean the same thing on every map in the app - green asks, orange answers.
   const markers = [
     ...requestsToMarkers(requests, null),
     ...helpersToMarkers(helpers),
@@ -165,14 +203,18 @@ export default function Helping() {
         )}
         {!registered && formOpen && (
           <form className="stack gap-10" style={{ padding: 13 }} onSubmit={submitHelper}>
-            <input className="input" value={hf.name} onChange={setField('name')} placeholder={t.phName} />
+            <div>
+              <div className="field__label">{t.yourName}<Req /></div>
+              <input className="input" value={hf.name} onChange={setField('name')} placeholder={t.phName} />
+            </div>
             <PhoneFields
               numbers={hf.contacts}
               onChange={(contacts) => setHf((f) => ({ ...f, contacts }))}
+              labelFirst
             />
 
             <div>
-              <div className="field__label" style={{ marginBottom: 7 }}>{t.districtsAvailable}</div>
+              <div className="field__label" style={{ marginBottom: 7 }}>{t.districtsAvailable}<Req /></div>
               <div className="chip-row">
                 {DISTRICTS.map((d) => {
                   const on = hf.districts.includes(d);
@@ -199,7 +241,7 @@ export default function Helping() {
                 point: a free-text "rice and water" cannot be matched against a
                 request's needs, a ticked list can. */}
             <div>
-              <div className="field__label" style={{ marginBottom: 7 }}>{t.suppliesCanGive}</div>
+              <div className="field__label" style={{ marginBottom: 7 }}>{t.suppliesCanGive}<Req /></div>
               <div className="chip-row">
                 {NEEDS.map((n) => {
                   const on = hf.supplies.includes(n.key);
@@ -253,6 +295,7 @@ export default function Helping() {
               Company
               <input tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} />
             </label>
+            <TermsCheckbox checked={agreed} onChange={setAgreed} />
             <TurnstileWidget onToken={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
             {helperError && <div className="form-error" style={{ marginBottom: 0 }}>{helperError}</div>}
             <button className="btn btn-green" type="submit" disabled={registering || !supabaseConfigured}>
@@ -281,61 +324,43 @@ export default function Helping() {
 
       <div id="list" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
         <div className="section-heading">
-          <div className="section-title">{t.peopleNeedHelp}</div>
-          <div className="section-meta">{visibleRequests.length}</div>
+          <div className="section-title">
+            <span className="section-count">{visibleRequests.length}</span> {t.peopleNeedHelp}
+          </div>
         </div>
         {scoring && <div className="section-hint">{t.matchNote}</div>}
-        <div className="chip-row" style={{ marginTop: 10 }}>
-          <button className={`chip ${fPrio === 'All' ? 'active' : ''}`} onClick={() => pickPrio('All')}>
-            {lang ? 'সকলো' : 'All'}
-          </button>
-          {PRIORITY_ORDER.map((key) => {
-            const p = PRIORITY_META[key];
-            const on = fPrio === key;
-            return (
-              <button
-                key={key}
-                className="chip"
-                style={on ? { borderColor: p.color, background: p.color, color: '#fff' } : undefined}
-                onClick={() => pickPrio(key)}
-              >
-                {p.shape} {t[key]}
-              </button>
-            );
-          })}
-        </div>
-        {/* Native selects on purpose: the OS picker is one tap, works offline
-            and is already translated. Two more chip rows would swamp the page. */}
-        <div className="filter-row">
-          <label className="filter">
-            <span className="filter__label">{t.filterDistrict}</span>
-            <select
-              className="input"
-              value={fDistrict}
-              onChange={(e) => { setFDistrict(e.target.value); setPage(0); }}
-            >
-              <option value="All">{t.allDistricts}</option>
-              {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-          <label className="filter">
-            <span className="filter__label">{t.filterWhen}</span>
-            <select
-              className="input"
-              value={fWhen}
-              onChange={(e) => { setFWhen(e.target.value); setPage(0); }}
-            >
-              {WHEN_OPTIONS.map((w) => (
-                <option key={w} value={w}>
-                  {{ all: t.whenAll, today: t.whenToday, recent: t.whenRecent, older: t.whenOlder }[w]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        {/* One panel, above the list and visibly separate from it: the filters
+            were previously loose controls that read as page furniture and got
+            scrolled straight past. */}
+        <ListControls filters={filters} onChange={changeFilters} withStatus withWhen>
+          <div className="chip-row" style={{ marginTop: 10 }}>
+            <button className={`chip ${filters.priority === 'All' ? 'active' : ''}`} onClick={() => pickPrio('All')}>
+              {lang ? 'সকলো' : 'All'}
+            </button>
+            {PRIORITY_ORDER.map((key) => {
+              const p = PRIORITY_META[key];
+              const on = filters.priority === key;
+              return (
+                <button
+                  key={key}
+                  className="chip"
+                  style={on ? { borderColor: p.color, background: p.color, color: '#fff' } : undefined}
+                  onClick={() => pickPrio(key)}
+                >
+                  {p.shape} {t[key]}
+                </button>
+              );
+            })}
+          </div>
+        </ListControls>
       </div>
 
       <div style={{ padding: '12px 14px 0' }} className="stack gap-10">
+        {!!newOnes.length && (
+          <button type="button" className="new-pill" onClick={jumpToNewest}>
+            ↓ {newOnes.length} {newOnes.length === 1 ? t.newRequests : t.newRequestsPlural}
+          </button>
+        )}
         {!supabaseConfigured && <div className="state-msg">{t.notConfigured}</div>}
         {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
         {supabaseConfigured && !loading && !visibleRequests.length && (
@@ -350,21 +375,25 @@ export default function Helping() {
           return (
             <div
               key={r.id}
-              className={`request-card ${done ? 'request-card--done' : ''}`}
+              id={`req-${r.id}`}
+              className={`request-card ${done ? 'request-card--done' : ''} ${r.created_at > (seenUpTo || '') ? 'request-card--new' : ''}`}
               style={{ borderLeft: `5px solid ${done ? 'var(--border)' : p.color}` }}
             >
               <div className="request-card__top">
                 <div className="request-card__name">{r.name}</div>
-                <span className="badge" style={{ background: p.bg, color: p.color }}>{p.shape} {t[r.priority]}</span>
+                {/* Priority and status side by side: two badges on one line
+                    read as one answer ("urgent, nobody has gone yet") where
+                    stacked rows read as two paragraphs. */}
+                <div className="badge-row">
+                  <span className="badge" style={{ background: p.bg, color: p.color }}>{p.shape} {t[r.priority]}</span>
+                  <span className="status-badge" style={{ background: sm.bg, color: sm.color, borderColor: sm.border }}>
+                    {t[sm.key]}
+                  </span>
+                </div>
               </div>
-              <div className="status-row">
-                <span className="status-badge" style={{ background: sm.bg, color: sm.color, borderColor: sm.border }}>
-                  {t[sm.key]}
-                </span>
-                {st === 'in_progress' && r.helper_name && (
-                  <span className="status-row__who">{r.helper_name}</span>
-                )}
-              </div>
+              {st === 'in_progress' && r.helper_name && (
+                <div className="status-row__who">{r.helper_name}</div>
+              )}
               <div className="request-card__line">{r.location}, {r.district} · {r.num_people} {t.peopleWord}</div>
               <div className="request-card__needs">{needsText(r)}</div>
               {scoring && (
@@ -375,7 +404,7 @@ export default function Helping() {
               <div style={{ font: '13px/1.6 system-ui', color: r.boat_required ? 'var(--orange)' : 'var(--text-tertiary)' }}>
                 {r.boat_required ? (lang ? 'নাও লাগে' : 'Boat required') : (lang ? 'নাও নালাগে' : 'Reachable by road')}
               </div>
-              {r.notes && <div className="request-card__notes">{r.notes}</div>}
+              <ClampText text={r.notes} className="request-card__notes" />
               <div className="request-card__foot">
                 <span className="request-card__time">
                   {formatDate(r.created_at, lang)} · {timeAgo(r.created_at, lang)}
@@ -387,12 +416,7 @@ export default function Helping() {
                       📍 {t.showOnMap}
                     </button>
                   )}
-                  {phoneList(r).map((num) => (
-                    <a key={num} className="call-btn" href={toTel(num)} aria-label={`${t.callNow} ${r.name}`}>
-                      <span className="call-btn__icon" aria-hidden="true">📞</span>
-                      {num}
-                    </a>
-                  ))}
+                  <PhoneButtons row={r} label={r.name} />
                 </div>
               </div>
             </div>

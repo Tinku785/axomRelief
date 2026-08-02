@@ -3,8 +3,8 @@ import { phoneList } from './phone.js';
 import { formatDate } from './time.js';
 
 // Plain text, not a link: this gets forwarded into WhatsApp groups where the
-// person reading it may never open the site. Everything needed to act — who,
-// where, what, which number to ring — has to survive the paste on its own.
+// person reading it may never open the site. Everything needed to act - who,
+// where, what, which number to ring - has to survive the paste on its own.
 
 function mapsLink(row) {
   if (row.lat == null || row.lng == null) return null;

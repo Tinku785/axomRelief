@@ -31,7 +31,7 @@ export default function FeedbackSheet({ open, onClose }) {
   const close = () => { onClose(); reset(); };
 
   const send = async () => {
-    if (company) return; // bot caught by honeypot — silently drop
+    if (company) return; // bot caught by honeypot - silently drop
     if (!msg || !email) {
       setError(lang ? 'ইমেইল আৰু বাৰ্তা দিয়ক।' : 'Please add your email and a short message.');
       return;
@@ -39,8 +39,8 @@ export default function FeedbackSheet({ open, onClose }) {
     if (!FORM_ID) {
       setError(
         lang
-          ? 'ফৰ্মস্প্ৰী ছেট কৰা হোৱা নাই — VITE_FORMSPREE_FORM_ID যোগ কৰক।'
-          : 'Formspree is not configured yet — set VITE_FORMSPREE_FORM_ID in .env.local.'
+          ? 'ফৰ্মস্প্ৰী ছেট কৰা হোৱা নাই - VITE_FORMSPREE_FORM_ID যোগ কৰক।'
+          : 'Formspree is not configured yet - set VITE_FORMSPREE_FORM_ID in .env.local.'
       );
       return;
     }
@@ -55,7 +55,7 @@ export default function FeedbackSheet({ open, onClose }) {
           name: name || '(not provided)',
           email,
           message: msg,
-          _subject: `Axom Relief feedback — ${TYPES[type][0]}`,
+          _subject: `Axom Relief feedback - ${TYPES[type][0]}`,
         }),
       });
       if (!res.ok) throw new Error('Formspree request failed');

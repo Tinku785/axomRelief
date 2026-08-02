@@ -55,7 +55,7 @@ export async function submitRequest(form) {
   return data;
 }
 
-// Admin only — set after phoning the family to confirm help actually arrived.
+// Admin only - set after phoning the family to confirm help actually arrived.
 export async function setRequestStatus(id, status) {
   const { error } = await supabase.from(TABLE).update({ status }).eq('id', id);
   if (error) throw error;

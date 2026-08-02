@@ -8,6 +8,8 @@ import { PRIORITY_META } from '../utils/priority';
 import { STATUS_META, STATUS_ORDER, statusOf } from '../utils/status';
 import { timeAgo, formatDateTime, toTel } from '../utils/time';
 import { phoneList } from '../utils/phone';
+import { toCsv, downloadCsv, stampedName } from '../utils/csv';
+import { emptyFilters, filterRequests, filterHelpers, isFiltered } from '../utils/listFilter';
 import {
   fetchAllRequestsForAdmin, setRequestHidden, deleteRequest, setRequestStatus,
 } from '../api/requests';
@@ -18,22 +20,36 @@ import { addHelpline, updateHelpline, deleteHelpline } from '../api/helplines';
 import { addNews, updateNews, deleteNews } from '../api/news';
 import { requestsToMarkers, helpersToMarkers } from '../utils/mapGeo';
 import ReliefMap from '../components/ReliefMap';
+import Pager, { pageSlice } from '../components/Pager';
+import ShareButton from '../components/ShareButton';
+import ListControls from '../components/ListControls';
+import Sheet from '../components/Sheet';
+import { requestShareText, helperShareText } from '../utils/share';
 
+// Ordered by how often an operator needs them: the queues first, the reference
+// data next, the map last. Requests is also the default tab.
 const TABS = [
-  ['map', 'Map'],
   ['requests', 'Requests'],
   ['helpers', 'Rescuers'],
-  ['helplines', 'Helplines'],
   ['news', 'News'],
+  ['helplines', 'Helplines'],
+  ['map', 'Map'],
 ];
 
 export default function AdminDashboard() {
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const { isAdmin, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const footer = useFooterData();
 
-  const [tab, setTab] = useState('map');
+  const [tab, setTab] = useState('requests');
+  const [reqPage, setReqPage] = useState(0);
+  const [helpPage, setHelpPage] = useState(0);
+  const [reqFilters, setReqFilters] = useState(emptyFilters);
+  const [helpFilters, setHelpFilters] = useState(emptyFilters);
+  // Which export is waiting on an "all or filtered?" answer: 'requests',
+  // 'helpers', or null.
+  const [askExport, setAskExport] = useState(null);
   const [requests, setRequests] = useState([]);
   const [helpers, setHelpers] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -41,7 +57,7 @@ export default function AdminDashboard() {
   const [hlLabel, setHlLabel] = useState('');
   const [hlPhone, setHlPhone] = useState('');
   const [newsMsg, setNewsMsg] = useState('');
-  // ponytail: one edit slot shared by the helpline and news tabs — only one tab
+  // ponytail: one edit slot shared by the helpline and news tabs - only one tab
   // is on screen at a time, so two separate states would never both be in use.
   const [edit, setEdit] = useState(null); // { id, a, b }
 
@@ -65,7 +81,7 @@ export default function AdminDashboard() {
   // A shared GPS pin is the exact spot; anything else is only the scattered
   // district-centre placeholder, and saying so stops a dispatcher trusting it.
   const coordsCell = (r) => {
-    if (r.lat == null) return '—';
+    if (r.lat == null) return '-';
     const coords = `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}`;
     return (
       <>
@@ -81,6 +97,90 @@ export default function AdminDashboard() {
     const parts = r.needs.map((k) => needLabel(k, lang));
     if (r.needs_other) parts.push(r.needs_other);
     return parts.join(', ');
+  };
+
+  // Every column an operator would otherwise re-type by hand, including the
+  // ones the card view summarises away (exact coordinates, all numbers, notes).
+  const exportRequests = (rows) => downloadCsv(stampedName('axomrelief-requests'), toCsv(rows, [
+    ['Name', (r) => r.name],
+    ['Phones', (r) => phoneList(r)],
+    ['District', (r) => r.district],
+    ['Address', (r) => r.location],
+    ['People', (r) => r.num_people],
+    ['Needs', (r) => (r.needs || []).map((k) => needLabel(k, 0))],
+    ['Other needs', (r) => r.needs_other],
+    ['Priority', (r) => r.priority],
+    ['Status', (r) => STATUS_META[statusOf(r)].label],
+    ['Boat required', (r) => (r.boat_required ? 'Yes' : 'No')],
+    ['Notes', (r) => r.notes],
+    ['Latitude', (r) => r.lat],
+    ['Longitude', (r) => r.lng],
+    ['Pin type', (r) => (r.has_live_location ? 'shared GPS' : 'approximate')],
+    ['Rescuer', (r) => r.helper_name],
+    ['Submitted', (r) => r.created_at],
+    ['Hidden', (r) => (r.hidden ? 'Yes' : 'No')],
+  ]));
+
+  const exportHelpers = (rows) => downloadCsv(stampedName('axomrelief-rescuers'), toCsv(rows, [
+    ['Name', (h) => h.name],
+    ['Phones', (h) => phoneList(h)],
+    ['Districts', (h) => h.districts_covered],
+    ['Areas', (h) => h.areas_text || h.areas_covered],
+    ['Supplies', (h) => h.what_given],
+    ['Boat available', (h) => (h.boat_available ? 'Yes' : 'No')],
+    ['Notes', (h) => h.notes],
+    ['Latitude', (h) => h.lat],
+    ['Longitude', (h) => h.lng],
+    ['Registered', (h) => h.created_at],
+    ['Hidden', (h) => (h.hidden ? 'Yes' : 'No')],
+  ]));
+
+  const shownRequests = filterRequests(requests, reqFilters, lang);
+  const shownHelpers = filterHelpers(helpers, helpFilters, lang);
+
+  // Everything an export needs to know about one of the two lists.
+  const exportSet = (kind) => (kind === 'requests'
+    ? { filtered: shownRequests, all: requests, noun: 'requests', run: exportRequests, narrowed: isFiltered(reqFilters) }
+    : { filtered: shownHelpers, all: helpers, noun: 'rescuers', run: exportHelpers, narrowed: isFiltered(helpFilters) });
+
+  // Exporting the visible 12 rows when you meant all 128 - or the reverse - is
+  // the kind of mistake you only notice after sending the file on, so when a
+  // filter is active the button asks instead of guessing.
+  const exportBar = (kind) => {
+    const { filtered, all, noun, run, narrowed } = exportSet(kind);
+    return (
+      <div className="admin-export">
+        <span>
+          {filtered.length}
+          {filtered.length !== all.length ? ` of ${all.length}` : ''} {noun}
+        </span>
+        <button className="admin-btn" onClick={() => (narrowed ? setAskExport(kind) : run(all))}>
+          ⤓ Export CSV
+        </button>
+      </div>
+    );
+  };
+
+  const exportDialog = () => {
+    if (!askExport) return null;
+    const { filtered, all, noun, run } = exportSet(askExport);
+    const choose = (rows) => { run(rows); setAskExport(null); };
+    return (
+      <Sheet title="Export CSV" onClose={() => setAskExport(null)} showClose={false}>
+        <p className="sheet__body">
+          A filter is applied. Export only the {filtered.length} {noun} currently shown,
+          or all {all.length}?
+        </p>
+        <div className="stack gap-9">
+          <button className="btn btn-green" onClick={() => choose(filtered)}>
+            Export filtered ({filtered.length})
+          </button>
+          <button className="btn btn-outline-green" onClick={() => choose(all)}>
+            Export all ({all.length})
+          </button>
+        </div>
+      </Sheet>
+    );
   };
 
   const addHelplineRow = async () => {
@@ -139,7 +239,15 @@ export default function AdminDashboard() {
 
       {!loadingList && tab === 'requests' && (
         <div className="admin-panel">
-          {requests.map((r) => {
+          {exportBar('requests')}
+          <ListControls
+            filters={reqFilters}
+            onChange={(next) => { setReqFilters(next); setReqPage(0); }}
+            withStatus
+            withWhen
+          />
+          {!shownRequests.length && <div className="state-msg">No requests match these filters.</div>}
+          {pageSlice(shownRequests, reqPage).map((r) => {
             const p = PRIORITY_META[r.priority];
             return (
               <div key={r.id} className={`admin-row ${r.hidden ? 'admin-row--hidden' : ''}`}>
@@ -165,7 +273,7 @@ export default function AdminDashboard() {
                   <dt>People</dt>
                   <dd>{r.num_people}</dd>
                   <dt>Needs</dt>
-                  <dd>{needsText(r) || '—'}</dd>
+                  <dd>{needsText(r) || '-'}</dd>
                   <dt>Boat</dt>
                   <dd>{r.boat_required ? 'Required' : 'Not required'}</dd>
                   <dt>Status</dt>
@@ -183,6 +291,7 @@ export default function AdminDashboard() {
                   )}
                 </dl>
                 <div className="admin-row__actions">
+                  <ShareButton title={r.name} build={() => requestShareText(r, t, lang)} />
                   {/* Only ever set "Help received" after phoning the family:
                       a rescuer saying they set off is not confirmation that
                       anyone arrived. */}
@@ -211,12 +320,19 @@ export default function AdminDashboard() {
               </div>
             );
           })}
+          <Pager total={shownRequests.length} page={reqPage} onPage={setReqPage} />
         </div>
       )}
 
       {!loadingList && tab === 'helpers' && (
         <div className="admin-panel">
-          {helpers.map((h) => (
+          {exportBar('helpers')}
+          <ListControls
+            filters={helpFilters}
+            onChange={(next) => { setHelpFilters(next); setHelpPage(0); }}
+          />
+          {!shownHelpers.length && <div className="state-msg">No rescuers match these filters.</div>}
+          {pageSlice(shownHelpers, helpPage).map((h) => (
             <div key={h.id} className={`admin-row ${h.hidden ? 'admin-row--hidden' : ''}`}>
               <div className="admin-row__name">{h.name}</div>
               <div className="admin-row__meta">
@@ -230,16 +346,17 @@ export default function AdminDashboard() {
                   ))}
                 </dd>
                 <dt>Districts</dt>
-                <dd>{h.districts_covered?.length ? h.districts_covered.join(', ') : '—'}</dd>
+                <dd>{h.districts_covered?.length ? h.districts_covered.join(', ') : '-'}</dd>
                 <dt>Areas</dt>
-                <dd>{h.areas_text || '—'}</dd>
+                <dd>{h.areas_text || '-'}</dd>
                 <dt>Supplies</dt>
-                <dd>{h.what_given || '—'}</dd>
+                <dd>{h.what_given || '-'}</dd>
                 <dt>Boat</dt>
                 <dd>{h.boat_available ? 'Available' : 'No'}</dd>
                 {h.notes && <><dt>Notes</dt><dd>{h.notes}</dd></>}
               </dl>
               <div className="admin-row__actions">
+                <ShareButton title={h.name} build={() => helperShareText(h, t, lang)} />
                 <button
                   className="admin-btn"
                   onClick={async () => { await setHelperHidden(h.id, !h.hidden); loadHelpers(); }}
@@ -255,6 +372,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+          <Pager total={shownHelpers.length} page={helpPage} onPage={setHelpPage} />
         </div>
       )}
 
@@ -300,6 +418,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {exportDialog()}
 
       {!loadingList && tab === 'news' && (
         <div style={{ padding: '0 14px' }}>

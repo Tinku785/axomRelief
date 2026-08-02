@@ -16,7 +16,7 @@ export default function Home() {
   const [mapOpen, setMapOpen] = useState(false);
 
   // Home shows the whole operating area, so requesters are plain green rather
-  // than priority-coloured — priority shading belongs on the rescuer page.
+  // than priority-coloured - priority shading belongs on the rescuer page.
   const markers = [...requestsToMarkers(requests, null), ...helpersToMarkers(helpers)];
 
   return (
@@ -57,12 +57,14 @@ export default function Home() {
           <img className="placard__icon" src={iconAmHelping} alt="" width="64" height="64" />
           <span className="placard__title-orange">{t.amHelping}</span>
         </button>
+      </div>
 
-        {/* Each placard is "I am X"; the button under it is "show me the other
-            side", and it carries the colour of the people it leads to —
-            rescuers orange, requesters green — not of the placard above it.
-            The rescuer list lives on the request page, the request list on the
-            helping page, so each audience lands where its counterpart is. */}
+      {/* Sticky, not just below the placards: these two are the way into the
+          lists, and on a long landing page they used to scroll out of reach
+          before anyone had decided which side they were on. Each carries the
+          colour of the people it leads to - rescuers orange, requesters green -
+          not of the placard above it. */}
+      <div className="cta-bar">
         <button className="cta cta-orange" onClick={() => navigate('/request#rescuers')}>
           {t.seeRescuers} ({helpers.length})
         </button>
