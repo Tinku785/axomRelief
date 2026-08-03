@@ -73,7 +73,7 @@ export default function SiteFooter({ showNews = false }) {
   const [contactOpen, setContactOpen] = useState(false);
 
   return (
-    <div style={{ marginTop: 30 }}>
+    <footer style={{ marginTop: 30 }}>
       {/* People keep offering money. Saying so once, in plain sight, is kinder
           than letting them ask and be turned down one at a time. */}
       <div className="no-donations">{t.noDonations}</div>
@@ -153,6 +153,6 @@ export default function SiteFooter({ showNews = false }) {
       )}
 
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
-    </div>
+    </footer>
   );
 }
