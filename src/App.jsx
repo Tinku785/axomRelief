@@ -22,7 +22,7 @@ export default function App() {
   useEffect(() => { if (!hash) window.scrollTo(0, 0); }, [pathname, hash]);
 
   return (
-    <div className="app-root">
+    <main className="app-root">
       <div className="app-shell">
         <Header />
 
@@ -36,8 +36,10 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
 
-        {!isAdmin && <SiteFooter showNews={pathname === '/'} />}
+        <footer>
+          {!isAdmin && <SiteFooter showNews={pathname === '/'} />}
+        </footer>
       </div>
-    </div>
+    </main>
   );
 }
