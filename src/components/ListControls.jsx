@@ -7,7 +7,7 @@ import { WHEN_OPTIONS } from '../utils/time';
 // rescuers, and both admin tabs. They were drifting apart as copies; a search
 // fix in one used to mean three more edits.
 export default function ListControls({
-  filters, onChange, withStatus = false, withWhen = false, children,
+  filters, onChange, withStatus = false, withWhen = false, withScore = false, children,
 }) {
   const { t } = useLang();
   // Any change is a new list, so page 3 of the old one is meaningless - the
@@ -41,8 +41,13 @@ export default function ListControls({
         <label className="filter">
           <span className="filter__label">{t.sortLabel}</span>
           <select className="input" value={filters.sort} onChange={(e) => set('sort')(e.target.value)}>
+            {/* Admin only: the score is computed for the admin fetch, so
+                offering it on a public list would sort every row as 0. */}
+            {withScore && <option value="score">{t.sortScore}</option>}
             <option value="oldest">{t.sortOldest}</option>
             <option value="newest">{t.sortNewest}</option>
+            {withScore && <option value="district">{t.sortDistrict}</option>}
+            {withScore && <option value="priority">{t.sortPriority}</option>}
           </select>
         </label>
 

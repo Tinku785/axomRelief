@@ -14,10 +14,13 @@ export async function fetchVisibleRequests() {
   return data;
 }
 
+// priority_score is a PostgREST computed column (migration 0013): it is not
+// part of `*` and has to be asked for by name. Recomputed on every fetch, which
+// is what keeps the age term moving without anything being stored.
 export async function fetchAllRequestsForAdmin() {
   const { data, error } = await supabase
     .from(TABLE)
-    .select('*')
+    .select('*, priority_score')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;

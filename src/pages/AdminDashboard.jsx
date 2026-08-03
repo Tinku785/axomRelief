@@ -4,8 +4,10 @@ import { useLang } from '../context/LangContext';
 import { useAuth } from '../context/AuthContext';
 import { useFooterData } from '../context/FooterDataContext';
 import { needLabel } from '../i18n/strings';
-import { PRIORITY_META } from '../utils/priority';
-import { STATUS_META, STATUS_ORDER, statusOf } from '../utils/status';
+import {
+  PRIORITY_META, byResolvedAt, resolvedAt, scoreBand, SCORE_BAND_LABEL,
+} from '../utils/priority';
+import { STATUS_META, STATUS_ORDER, statusOf, isResolved } from '../utils/status';
 import { timeAgo, formatDateTime, toTel } from '../utils/time';
 import { phoneList } from '../utils/phone';
 import { toCsv, downloadCsv, stampedName } from '../utils/csv';
@@ -43,9 +45,14 @@ export default function AdminDashboard() {
   const footer = useFooterData();
 
   const [tab, setTab] = useState('requests');
+  // Open vs resolved. The ranked queue is the job; resolved is a record you go
+  // and look up, so it gets its own tab rather than a row in the same list.
+  const [reqTab, setReqTab] = useState('open');
   const [reqPage, setReqPage] = useState(0);
   const [helpPage, setHelpPage] = useState(0);
-  const [reqFilters, setReqFilters] = useState(emptyFilters);
+  // Triage order by default: the whole point of the score is that the top of
+  // the list is the next call to make.
+  const [reqFilters, setReqFilters] = useState({ ...emptyFilters, sort: 'score' });
   const [helpFilters, setHelpFilters] = useState(emptyFilters);
   // Which export is waiting on an "all or filtered?" answer: 'requests',
   // 'helpers', or null.
@@ -123,7 +130,9 @@ export default function AdminDashboard() {
     ['Needs', (r) => (r.needs || []).map((k) => needLabel(k, 0))],
     ['Other needs', (r) => r.needs_other],
     ['Priority', (r) => r.priority],
+    ['Priority score', (r) => r.priority_score],
     ['Status', (r) => STATUS_META[statusOf(r)].label],
+    ['Resolved at', (r) => (isResolved(r) ? resolvedAt(r) : null)],
     ['Boat required', (r) => (r.boat_required ? 'Yes' : 'No')],
     ['Notes', (r) => r.notes],
     ['Latitude', (r) => r.lat],
@@ -148,12 +157,22 @@ export default function AdminDashboard() {
     ['Hidden', (h) => (h.hidden ? 'Yes' : 'No')],
   ]));
 
-  const shownRequests = filterRequests(requests, reqFilters, lang);
+  const openRequests = requests.filter((r) => !isResolved(r));
+  const resolvedRequests = requests.filter(isResolved);
+  const reqPool = reqTab === 'resolved' ? resolvedRequests : openRequests;
+
+  // Resolved is always newest-resolution-first - "when was this closed" is the
+  // only question that list answers, so the sort dropdown does not apply to it.
+  // The status filter is dropped there too: the tab has already answered it.
+  const shownRequests = reqTab === 'resolved'
+    ? byResolvedAt(filterRequests(resolvedRequests, { ...reqFilters, status: 'All' }, lang))
+    : filterRequests(openRequests, reqFilters, lang);
   const shownHelpers = filterHelpers(helpers, helpFilters, lang);
 
-  // Everything an export needs to know about one of the two lists.
+  // Everything an export needs to know about one of the two lists. "All" means
+  // all of the tab you are looking at, not both tabs merged.
   const exportSet = (kind) => (kind === 'requests'
-    ? { filtered: shownRequests, all: requests, noun: 'requests', run: exportRequests, narrowed: isFiltered(reqFilters) }
+    ? { filtered: shownRequests, all: reqPool, noun: 'requests', run: exportRequests, narrowed: isFiltered(reqFilters) }
     : { filtered: shownHelpers, all: helpers, noun: 'rescuers', run: exportHelpers, narrowed: isFiltered(helpFilters) });
 
   // Exporting the visible 12 rows when you meant all 128 - or the reverse - is
@@ -253,11 +272,28 @@ export default function AdminDashboard() {
       {!loadingList && tab === 'requests' && (
         <div className="admin-panel">
           {exportBar('requests')}
+          <div className="list-tabs">
+            <button
+              type="button"
+              className={`list-tab ${reqTab === 'open' ? 'active' : ''}`}
+              onClick={() => { setReqTab('open'); setReqPage(0); }}
+            >
+              Open <span className="section-count">({openRequests.length})</span>
+            </button>
+            <button
+              type="button"
+              className={`list-tab ${reqTab === 'resolved' ? 'active' : ''}`}
+              onClick={() => { setReqTab('resolved'); setReqPage(0); }}
+            >
+              Resolved <span className="section-count">({resolvedRequests.length})</span>
+            </button>
+          </div>
           <ListControls
             filters={reqFilters}
             onChange={(next) => { setReqFilters(next); setReqPage(0); }}
-            withStatus
+            withStatus={reqTab === 'open'}
             withWhen
+            withScore={reqTab === 'open'}
           />
           {!shownRequests.length && <div className="state-msg">No requests match these filters.</div>}
           {pageSlice(shownRequests, reqPage).map((r) => {
@@ -269,8 +305,19 @@ export default function AdminDashboard() {
                   <span className="admin-row__prio" style={{ color: p.color }}>{p.shape} {r.priority}</span>
                 </div>
                 <div className="admin-row__meta">
+                  {/* The number, not just the position: an operator who can see
+                      why a row ranks where it does can argue with it. */}
+                  {r.priority_score != null && (
+                    <span
+                      className={`score-badge score-badge--${scoreBand(r.priority_score)}`}
+                      title={`${SCORE_BAND_LABEL[scoreBand(r.priority_score)]} ${r.priority_score} (red 200+, amber 120-199, green under 120). (priority x50) + (highest need weight x20) + people (max 20) + hours waiting x0.5 - logged updates x15. Computed fresh on every load.`}
+                    >
+                      {r.priority_score} · {SCORE_BAND_LABEL[scoreBand(r.priority_score)]}
+                    </span>
+                  )}
                   {timeAgo(r.created_at, lang)} · {formatDateTime(r.created_at, lang)}
                   {r.hidden ? ' · HIDDEN' : ''}
+                  {isResolved(r) && r.resolved_at ? ` · resolved ${formatDateTime(r.resolved_at, lang)}` : ''}
                 </div>
                 <dl className="admin-detail">
                   <dt>Phone</dt>
@@ -308,6 +355,18 @@ export default function AdminDashboard() {
                   {/* Only ever set "Help received" after phoning the family:
                       a rescuer saying they set off is not confirmation that
                       anyone arrived. */}
+                  {/* One tap for the common case. The select stays because it
+                      is the only way to reach 'in progress', which this button
+                      deliberately skips over. */}
+                  <button
+                    className="admin-btn"
+                    onClick={async () => {
+                      await setRequestStatus(r.id, isResolved(r) ? 'looking' : 'resolved');
+                      loadRequests();
+                    }}
+                  >
+                    {isResolved(r) ? 'Reopen' : 'Mark Resolved'}
+                  </button>
                   <select
                     className="admin-select"
                     value={statusOf(r)}
