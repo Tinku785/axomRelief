@@ -17,25 +17,24 @@ export default function ListControls({
 
   return (
     <div className="filter-panel">
-      <div className="filter-panel__head">
-        <div className="filter-panel__title">{t.filtersTitle}</div>
-        {/* Search sits with the filters, top right: it is the fastest way to a
-            known name and belongs with the other ways of narrowing the list. */}
-        <div className="search-row">
-          <input
-            className="input"
-            type="search"
-            value={filters.query}
-            onChange={(e) => set('query')(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            aria-label={t.searchPlaceholder}
-          />
-          {!!filters.query && (
-            <button type="button" className="search-row__clear" onClick={() => set('query')('')}>
-              {t.clearSearch}
-            </button>
-          )}
-        </div>
+      {/* One thing per line, in the order you reach for them: what this block
+          is, then search, then the dropdowns, then priority. */}
+      <div className="filter-panel__title">{t.filtersTitle}</div>
+
+      <div className="search-row">
+        <input
+          className="input"
+          type="search"
+          value={filters.query}
+          onChange={(e) => set('query')(e.target.value)}
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchPlaceholder}
+        />
+        {!!filters.query && (
+          <button type="button" className="search-row__clear" onClick={() => set('query')('')}>
+            {t.clearSearch}
+          </button>
+        )}
       </div>
 
       <div className="filter-row">

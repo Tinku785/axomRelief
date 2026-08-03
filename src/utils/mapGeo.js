@@ -12,6 +12,13 @@ export const DISTRICT_CENTERS = {
 export const REGION_CENTER = { lat: 26.92, lng: 94.62 };
 export const REGION_ZOOM = 9;
 
+// The map is a dispatch tool for three districts, not an atlas. Panning off to
+// Delhi or zooming out to the subcontinent only ever loses someone their place,
+// so the view is fenced to the operating area plus a margin of context.
+// [south, west], [north, east]
+export const REGION_BOUNDS = [[26.20, 93.55], [27.75, 95.75]];
+export const MIN_ZOOM = 9;
+
 // ~0.045 deg either side is roughly 5 km - enough to keep pins from stacking,
 // small enough that a pin stays inside its own district.
 const SPREAD = 0.09;
@@ -28,9 +35,9 @@ function hasCoords(row) {
   return typeof row.lat === 'number' && typeof row.lng === 'number';
 }
 
-// Resolved requests stay in the list (greyed) but leave the map: a pin means
-// "someone here still needs reaching", and a map full of finished jobs is what
-// makes rescuers stop trusting it.
+// Resolved requests move to their own "received help" tab and leave the map: a
+// pin means "someone here still needs reaching", and a map full of finished
+// jobs is what makes rescuers stop trusting it.
 export function requestsToMarkers(requests, priorityMeta) {
   return requests.filter((r) => hasCoords(r) && r.status !== 'resolved').map((r) => ({
     id: r.id,

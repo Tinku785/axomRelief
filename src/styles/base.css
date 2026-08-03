@@ -619,23 +619,52 @@ textarea.input { resize: vertical; }
    thing you touch before reading 57 cards. */
 .filter-panel {
   margin-top: 12px;
-  padding: 12px;
+  padding: 10px;
   background: var(--green-bg);
   border: 1.5px solid var(--border-light);
   border-radius: var(--radius-lg);
 }
 
 .filter-panel__title {
-  font: 800 12px var(--font);
+  font: 800 11px var(--font);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--green);
-  margin-bottom: 9px;
+  margin-bottom: 8px;
 }
 
 /* Two per row on a phone, so four controls do not squeeze to unreadable. */
-.filter-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.filter { flex: 1 1 calc(50% - 5px); min-width: 130px; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter { flex: 1 1 calc(50% - 4px); min-width: 120px; }
+
+/* Priority sits on one line. Wrapping put "Needed" on a row of its own and
+   made the block look twice as tall as it is; a scroll keeps the shape. */
+.chip-row--priority {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.chip-row--priority::-webkit-scrollbar { display: none; }
+.chip-row--priority .chip { flex: none; white-space: nowrap; }
+
+/* Compact controls: this block is scaffolding around the list, not the list. */
+.filter-panel .input {
+  padding: 8px 10px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+.filter-panel .filter__label { font-size: 11px; margin-bottom: 3px; }
+.filter-panel .chip {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-width: 1px;
+}
+.chip__count {
+  font-weight: 800;
+  opacity: 0.75;
+  margin-left: 2px;
+}
 .filter__label {
   display: block;
   font: 600 11.5px var(--font);
@@ -645,6 +674,36 @@ textarea.input { resize: vertical; }
 
 
 /* Outlined so an unanswered request reads as urgent without a wall of red. */
+/* Two lists, one heading. The counts sit in the tab so "44 received help" is
+   visible without switching to it. */
+.list-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  border-bottom: 1.5px solid var(--border-light);
+}
+
+.list-tab {
+  padding: 8px 2px 10px;
+  margin-bottom: -1.5px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--text-tertiary);
+  font: 700 14px var(--font);
+  cursor: pointer;
+  /* Side by side, so the active underline marks one tab rather than spanning
+     the row like a section rule. */
+  flex: 1 1 45%;
+  min-width: 0;
+  text-align: left;
+  font-size: 13px;
+}
+.list-tab .section-count { color: inherit; font-size: 15px; }
+.list-tab.active { color: var(--text); border-bottom-color: var(--green); }
+.list-tab.active .section-count { color: var(--green); }
+
 .status-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -671,18 +730,10 @@ textarea.input { resize: vertical; }
 .request-card--done .request-card__name { text-decoration: line-through; }
 
 
-/* Title left, search right - on a narrow phone the search drops to its own
-   line rather than shrinking to a slot too small to read. */
-.filter-panel__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 9px;
-}
-.filter-panel__head .filter-panel__title { margin-bottom: 0; flex: none; }
-.filter-panel__head .search-row { flex: 1 1 190px; margin-bottom: 0; }
-.filter-panel__head .search-row .input { padding: 9px 74px 9px 11px; font-size: 14px; }
+/* Search on its own line, full width, under the title. */
+.filter-panel .search-row { margin-bottom: 8px; }
+.filter-panel .search-row .input { padding: 8px 66px 8px 10px; font-size: 13px; }
+.filter-panel .search-row__clear { padding: 4px 8px; font-size: 11px; }
 
 .search-row { position: relative; margin-bottom: 10px; }
 .search-row .input { padding-right: 74px; }
@@ -731,6 +782,37 @@ textarea.input { resize: vertical; }
 
 /* Mandatory-field marker. */
 .req-star { color: var(--critical); font-weight: 700; }
+
+/* The masked state: same shape as the call button so the row does not jump
+   when a number is revealed, but plainly not a phone number yet. */
+.call-btn.call-btn--masked,
+.helper-card__call.helper-card__call--masked {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+}
+.call-btn.call-btn--masked:hover,
+.helper-card__call.helper-card__call--masked:hover { border-color: var(--green); color: var(--green); }
+.eye-icon { display: block; flex: none; }
+/* The block variant is a full-width centred anchor; as a masked button it has
+   to lay the icon and the digits out on one line instead of stacking them. */
+.call-btn.call-btn--masked,
+.helper-card__call.helper-card__call--masked,
+.more-numbers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.helper-card__call.helper-card__call--masked { width: auto; }
+
+.masked-hint {
+  margin-left: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  color: var(--text);
+}
 
 /* "+2" chip next to the first call button; the rest open on the line below. */
 .more-numbers {

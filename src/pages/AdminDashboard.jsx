@@ -38,7 +38,7 @@ const TABS = [
 
 export default function AdminDashboard() {
   const { lang, t } = useLang();
-  const { isAdmin, loading: authLoading, signOut } = useAuth();
+  const { isAdmin, session, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const footer = useFooterData();
 
@@ -70,13 +70,26 @@ export default function AdminDashboard() {
     Promise.all([loadRequests(), loadHelpers()]).finally(() => setLoadingList(false));
   }, [isAdmin]);
 
-  if (!authLoading && !isAdmin) return <Navigate to="/admin/login" replace />;
-  if (authLoading) return <div className="state-msg">Loading…</div>;
-
   const logout = async () => {
     await signOut();
     navigate('/');
   };
+
+  if (authLoading) return <div className="state-msg">Loading…</div>;
+  // Signed in but not on the admin list: say so instead of bouncing back to a
+  // login screen they just passed, which reads as a broken password.
+  if (!isAdmin && session) {
+    return (
+      <div className="screen" style={{ padding: 24 }}>
+        <div className="form-error">
+          This account is not an administrator. Ask an existing admin to add your
+          email to the admins table.
+        </div>
+        <button className="btn btn-outline-green" onClick={logout}>Sign out</button>
+      </div>
+    );
+  }
+  if (!isAdmin) return <Navigate to="/admin/login" replace />;
 
   // A shared GPS pin is the exact spot; anything else is only the scattered
   // district-centre placeholder, and saying so stops a dispatcher trusting it.
