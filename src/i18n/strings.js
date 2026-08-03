@@ -105,6 +105,11 @@ export const STR = {
   showOnMap: ['Show on map', 'মানচিত্ৰত দেখুৱাওক'],
   openInMaps: ['See on Google Maps', 'গুগল মেপত চাওক'],
   seeRescuers: ['They are helping', 'তেওঁলোকে সহায় কৰিছে'],
+  peopleReceivedHelp: ['People received help', 'সহায় পোৱা মানুহ'],
+  tabNeedHelp: ['Still need help', 'এতিয়াও সহায় লাগে'],
+  showNumber: ['Show number', 'নম্বৰ দেখুৱাওক'],
+  hideNumber: ['Hide number', 'নম্বৰ লুকুৱাওক'],
+  noResolvedYet: ['No requests have been marked as helped yet.', 'এতিয়ালৈকে কোনো অনুৰোধ সম্পূৰ্ণ হোৱা নাই।'],
   seeRequesters: ['They need help', 'তেওঁলোকক সহায় লাগে'],
   statusLooking: ['Looking for help', 'সহায় বিচাৰি আছে'],
   statusInProgress: ['Help in progress', 'সহায় আহি আছে'],
@@ -141,10 +146,13 @@ export const STR = {
     'আমি এই মুহূৰ্তত ধন বা অনুদান লোৱা নাই। আপোনাৰ প্ৰস্তাৱৰ বাবে ধন্যবাদ - সহায় কৰিব বিচাৰিলে উদ্ধাৰকাৰী হিচাপে নাম দিয়ক বা পোনপটীয়াকৈ সামগ্ৰী আনক।',
   ],
   termsSub: ['Please read before submitting a request or registering as a rescuer.', 'অনুৰোধ দিয়াৰ বা পঞ্জীয়নৰ আগতে পঢ়ক।'],
-  filtersTitle: ['Filter & sort', 'ফিল্টাৰ আৰু ক্ৰম'],
+  filtersTitle: ['Filter, sort & search', 'ফিল্টাৰ, ক্ৰম আৰু সন্ধান'],
   sortLabel: ['Sort', 'ক্ৰম'],
   sortOldest: ['Oldest first', 'পুৰণিটো আগত'],
   sortNewest: ['Newest first', 'নতুনটো আগত'],
+  sortScore: ['Priority score', 'অগ্ৰাধিকাৰ স্ক’ৰ'],
+  sortDistrict: ['District', 'জিলা'],
+  sortPriority: ['Priority label', 'অগ্ৰাধিকাৰ'],
   exportCsv: ['Export CSV', 'CSV ৰপ্তানি'],
   filterStatus: ['Status', 'অৱস্থা'],
   allStatuses: ['Any status', 'যিকোনো অৱস্থা'],
@@ -160,12 +168,16 @@ export const STR = {
   notConfigured: ['Backend not configured yet - see .env.example.', 'বেকএণ্ড এতিয়াও ছেট কৰা হোৱা নাই - .env.example চাওক।'],
 };
 
-// Need option keys, in prototype order. Index 6 ("other") reveals a free-text field.
+// Need option keys, in prototype order. The last one ("other") reveals a
+// free-text field. Weights for the admin priority score live in the database
+// (migration 0013, public.need_weight) - a key added here without a matching
+// weight there scores 1.
 export const NEEDS = [
   { key: 'water', label: ['Water', 'পানী'] },
   { key: 'food', label: ['Food', 'খাদ্য'] },
   { key: 'clothes', label: ['Clothes', 'কাপোৰ'] },
   { key: 'medical', label: ['Medical', 'চিকিৎসা'] },
+  { key: 'rescue', label: ['Rescue', 'উদ্ধাৰ'] },
   { key: 'sanitation', label: ['Sanitation', 'পৰিষ্কাৰ'] },
   { key: 'baby_care', label: ['Baby care', 'শিশু সামগ্ৰী'] },
   { key: 'other', label: ['Other', 'অন্য'] },

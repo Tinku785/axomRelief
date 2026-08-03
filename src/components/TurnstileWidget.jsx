@@ -5,6 +5,9 @@ const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 // "…AA" twin prints a "For testing only" banner into the form.
 const DEV_FALLBACK_SITE_KEY = '1x00000000000000000000BB';
 
+// Every Cloudflare test key starts 1x / 2x / 3x. A real one starts 0x.
+const isTestKey = (key) => !key || /^[123]x0{20}/.test(key);
+
 let scriptPromise = null;
 function loadTurnstileScript() {
   if (window.turnstile) return Promise.resolve();
@@ -32,7 +35,29 @@ export default function TurnstileWidget({ onToken, onExpire }) {
   // Any 110200 left in production means the deployed domain is missing from
   // that list; add it in the Turnstile dashboard.
   const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
-  const siteKey = (!isLocal && import.meta.env.VITE_TURNSTILE_SITE_KEY) || DEV_FALLBACK_SITE_KEY;
+  const configuredKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  const siteKey = (!isLocal && configuredKey) || DEV_FALLBACK_SITE_KEY;
+
+  // Disclosure finding 3: a deploy with VITE_TURNSTILE_SITE_KEY missing fell
+  // back to the always-pass test key and looked protected while being wide
+  // open. It still falls back - a broken widget must not stop a flood victim
+  // submitting - but it now says so loudly instead of failing silently.
+  //
+  // Worth knowing: swapping in a real key alone does NOT stop scripted
+  // submissions. The token is never sent anywhere, so nothing verifies it; a
+  // bot posting straight to the API skips the widget entirely. The protection
+  // that actually holds is the per-IP and per-phone insert limit enforced by a
+  // database trigger. Real CAPTCHA enforcement needs the token checked
+  // server-side against Cloudflare's siteverify endpoint before the insert.
+  useEffect(() => {
+    if (!isLocal && isTestKey(siteKey)) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[AxomRelief] Turnstile is running on a TEST key in production - forms have no bot challenge. '
+        + 'Set VITE_TURNSTILE_SITE_KEY to a real key for this domain.',
+      );
+    }
+  }, [isLocal, siteKey]);
 
   // If Turnstile itself cannot load - bad hostname config, blocked script,
   // captive wifi - hand out a sentinel token rather than locking the form.

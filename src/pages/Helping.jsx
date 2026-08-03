@@ -50,6 +50,9 @@ export default function Helping() {
   // that arrives after this is what the "new requests" pill counts.
   const [seenUpTo, setSeenUpTo] = useState(null);
   const [jumpTo, setJumpTo] = useState(null);
+  // 'open' = still needs help, 'done' = help received. Two lists, because a
+  // rescuer scanning for work should not have to skip past finished jobs.
+  const [listTab, setListTab] = useState('open');
   const [page, setPage] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
   const [focus, setFocus] = useState(null);
@@ -151,15 +154,16 @@ export default function Helping() {
     }
   };
 
-  const filtered = filterRequests(requests, filters, lang);
+  const openRequests = requests.filter((r) => !isResolved(r));
+  const doneRequests = requests.filter((r) => isResolved(r));
+  // Counts on the priority chips describe the tab you are in, not the whole
+  // table - "Critical 18" has to mean 18 of the rows you can actually see.
+  const tabPool = listTab === 'done' ? doneRequests : openRequests;
+  const filtered = filterRequests(tabPool, filters, lang);
   // Once a rescuer has ticked what they can bring, the useful order is "who can
   // I actually help most" rather than "who posted last".
   const scoring = hf.supplies.some((s) => s !== 'other');
-  // Finished jobs sink to the bottom whatever else is going on. Stable sort, so
-  // the match/age order above survives inside each group.
-  const visibleRequests = sortByMatch(filtered, hf.supplies)
-    .slice()
-    .sort((a, b) => Number(isResolved(a)) - Number(isResolved(b)));
+  const visibleRequests = sortByMatch(filtered, hf.supplies);
   const pageRequests = pageSlice(visibleRequests, page);
 
   // null, not PRIORITY_META: requesters are plain green here so the pin colours
@@ -311,7 +315,7 @@ export default function Helping() {
             <div className="map-legend">
               <span className="map-legend__item">
                 <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} />
-                {t.legendRequesters} ({requests.length})
+                {t.legendRequesters} ({openRequests.length})
               </span>
               <span className="map-legend__item">
                 <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} />
@@ -323,19 +327,13 @@ export default function Helping() {
       </div>
 
       <div id="list" style={{ padding: '20px 14px 0', scrollMarginTop: 76 }}>
-        <div className="section-heading">
-          <div className="section-title">
-            <span className="section-count">{visibleRequests.length}</span> {t.peopleNeedHelp}
-          </div>
-        </div>
-        {scoring && <div className="section-hint">{t.matchNote}</div>}
         {/* One panel, above the list and visibly separate from it: the filters
             were previously loose controls that read as page furniture and got
             scrolled straight past. */}
         <ListControls filters={filters} onChange={changeFilters} withStatus withWhen>
-          <div className="chip-row" style={{ marginTop: 10 }}>
+          <div className="chip-row chip-row--priority" style={{ marginTop: 8 }}>
             <button className={`chip ${filters.priority === 'All' ? 'active' : ''}`} onClick={() => pickPrio('All')}>
-              {lang ? 'সকলো' : 'All'}
+              {lang ? 'সকলো' : 'All'} <span className="chip__count">{tabPool.length}</span>
             </button>
             {PRIORITY_ORDER.map((key) => {
               const p = PRIORITY_META[key];
@@ -347,16 +345,33 @@ export default function Helping() {
                   style={on ? { borderColor: p.color, background: p.color, color: '#fff' } : undefined}
                   onClick={() => pickPrio(key)}
                 >
-                  {p.shape} {t[key]}
+                  {p.shape} {t[key]} <span className="chip__count">{tabPool.filter((r) => r.priority === key).length}</span>
                 </button>
               );
             })}
           </div>
         </ListControls>
+        <div className="list-tabs">
+          <button
+            type="button"
+            className={`list-tab ${listTab === 'open' ? 'active' : ''}`}
+            onClick={() => { setListTab('open'); setPage(0); }}
+          >
+            {t.peopleNeedHelp} <span className="section-count">({openRequests.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`list-tab ${listTab === 'done' ? 'active' : ''}`}
+            onClick={() => { setListTab('done'); setPage(0); }}
+          >
+            {t.peopleReceivedHelp} <span className="section-count">({doneRequests.length})</span>
+          </button>
+        </div>
+        {scoring && <div className="section-hint">{t.matchNote}</div>}
       </div>
 
       <div style={{ padding: '12px 14px 0' }} className="stack gap-10">
-        {!!newOnes.length && (
+        {listTab === 'open' && !!newOnes.length && (
           <button type="button" className="new-pill" onClick={jumpToNewest}>
             ↓ {newOnes.length} {newOnes.length === 1 ? t.newRequests : t.newRequestsPlural}
           </button>
@@ -364,7 +379,10 @@ export default function Helping() {
         {!supabaseConfigured && <div className="state-msg">{t.notConfigured}</div>}
         {supabaseConfigured && loading && <div className="state-msg">{t.loading}</div>}
         {supabaseConfigured && !loading && !visibleRequests.length && (
-          <div className="state-msg">{requests.length ? t.noMatch : t.noneYet}</div>
+          <div className="state-msg">
+            {(listTab === 'done' ? doneRequests : openRequests).length ? t.noMatch
+              : (listTab === 'done' ? t.noResolvedYet : t.noneYet)}
+          </div>
         )}
         {supabaseConfigured && !loading && pageRequests.map((r) => {
           const p = PRIORITY_META[r.priority];

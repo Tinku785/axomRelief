@@ -51,7 +51,35 @@
 .admin-row__prio { font: 700 11.5px var(--font); }
 .admin-row__meta { font: 12px var(--font); color: var(--text-secondary); margin-top: 3px; }
 
-.admin-row__actions { display: flex; gap: 8px; margin-top: 9px; }
+/* Solid traffic-light fill carrying the score and its band. Keeps the number
+   next to the label so the badge still explains the sort order rather than
+   just categorising it.
+   Text colour is per-band because one colour cannot serve all three fills:
+   white on the dark red reads at 5.6:1, but white on the bright amber and
+   green measured 1.5:1 and 1.4:1 against WCAG's 4.5:1 minimum. */
+.score-badge {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font: 700 12px var(--font);
+  white-space: nowrap;
+  cursor: help;
+}
+
+.score-badge--high   { background: #CD1C18; color: #fff; }        /*  5.56:1 */
+.score-badge--medium { background: #FFCE1B; color: var(--text); } /* 10.99:1 */
+.score-badge--low    { background: #89F336; color: var(--text); } /* 11.65:1 */
+
+/* Five controls do not fit one 430px row - without wrapping, the widest row
+   sets the width of the whole panel and the page picks up a horizontal
+   scrollbar, which is what clipped the labels off the left edge. */
+.admin-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
 
 /* Dispatch needs every field of a request, not a summary line: the operator on
    the phone has to read out a number and a landmark, not guess them. */

@@ -7,7 +7,7 @@ import { WHEN_OPTIONS } from '../utils/time';
 // rescuers, and both admin tabs. They were drifting apart as copies; a search
 // fix in one used to mean three more edits.
 export default function ListControls({
-  filters, onChange, withStatus = false, withWhen = false, children,
+  filters, onChange, withStatus = false, withWhen = false, withScore = false, children,
 }) {
   const { t } = useLang();
   // Any change is a new list, so page 3 of the old one is meaningless - the
@@ -17,33 +17,37 @@ export default function ListControls({
 
   return (
     <div className="filter-panel">
-      <div className="filter-panel__head">
-        <div className="filter-panel__title">{t.filtersTitle}</div>
-        {/* Search sits with the filters, top right: it is the fastest way to a
-            known name and belongs with the other ways of narrowing the list. */}
-        <div className="search-row">
-          <input
-            className="input"
-            type="search"
-            value={filters.query}
-            onChange={(e) => set('query')(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            aria-label={t.searchPlaceholder}
-          />
-          {!!filters.query && (
-            <button type="button" className="search-row__clear" onClick={() => set('query')('')}>
-              {t.clearSearch}
-            </button>
-          )}
-        </div>
+      {/* One thing per line, in the order you reach for them: what this block
+          is, then search, then the dropdowns, then priority. */}
+      <div className="filter-panel__title">{t.filtersTitle}</div>
+
+      <div className="search-row">
+        <input
+          className="input"
+          type="search"
+          value={filters.query}
+          onChange={(e) => set('query')(e.target.value)}
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchPlaceholder}
+        />
+        {!!filters.query && (
+          <button type="button" className="search-row__clear" onClick={() => set('query')('')}>
+            {t.clearSearch}
+          </button>
+        )}
       </div>
 
       <div className="filter-row">
         <label className="filter">
           <span className="filter__label">{t.sortLabel}</span>
           <select className="input" value={filters.sort} onChange={(e) => set('sort')(e.target.value)}>
+            {/* Admin only: the score is computed for the admin fetch, so
+                offering it on a public list would sort every row as 0. */}
+            {withScore && <option value="score">{t.sortScore}</option>}
             <option value="oldest">{t.sortOldest}</option>
             <option value="newest">{t.sortNewest}</option>
+            {withScore && <option value="district">{t.sortDistrict}</option>}
+            {withScore && <option value="priority">{t.sortPriority}</option>}
           </select>
         </label>
 

@@ -5,7 +5,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLang } from '../context/LangContext';
-import { REGION_CENTER, REGION_ZOOM } from '../utils/mapGeo';
+import { REGION_CENTER, REGION_ZOOM, REGION_BOUNDS, MIN_ZOOM } from '../utils/mapGeo';
 import { toTel } from '../utils/time';
 
 // OpenStreetMap: no API key, no billing account, no daily quota to run out of
@@ -164,6 +164,11 @@ export default function ReliefMap({
         className="relief-map__canvas"
         center={[REGION_CENTER.lat, REGION_CENTER.lng]}
         zoom={REGION_ZOOM}
+        minZoom={MIN_ZOOM}
+        maxBounds={REGION_BOUNDS}
+        // 1.0 makes the edge solid rather than springy: a half-drag that snaps
+        // back reads as a broken map.
+        maxBoundsViscosity={1.0}
         zoomControl={interactive}
         // The preview pans and zooms like any other map; only the wheel is off,
         // so scrolling past it down the page does not get swallowed.

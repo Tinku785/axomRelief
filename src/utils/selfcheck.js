@@ -4,7 +4,10 @@ import { normalizePhone, isValidPhone, phoneList, cleanContacts, contactsError }
 import { jitterAroundDistrict, DISTRICT_CENTERS, requestsToMarkers } from './mapGeo.js';
 import { matchesWhen } from './time.js';
 import { statusOf, isResolved } from './status.js';
-import { matchCount, sortByMatch, byAge } from './priority.js';
+import {
+  matchCount, sortByMatch, byAge, sortRequests, byResolvedAt, resolvedAt, scoreBand,
+  SCORE_BAND_LABEL,
+} from './priority.js';
 import { requestShareText, helperShareText } from './share.js';
 import { csvCell, toCsv } from './csv.js';
 import { matchesQuery } from './search.js';
@@ -192,6 +195,80 @@ assert.ok(!isResolved({}));
   // safe because Postgres hands back a fixed-width UTC format.
   const seen = '2026-07-30T18:00:00Z';
   assert.deepEqual(rows.filter((r) => r.created_at > seen).map((r) => r.id), ['newest']);
+}
+
+// ── Admin sorts: score desc by default, and the fallbacks ────────────────
+{
+  const row = (id, over) => ({
+    id, district: 'Jorhat', priority: 'needed', created_at: '2026-07-30T12:00:00Z', ...over,
+  });
+  const rows = [
+    row('mid', { priority_score: 120.5 }),
+    row('top', { priority_score: 258.6 }),
+    row('low', { priority_score: 40 }),
+  ];
+  assert.deepEqual(sortRequests(rows, 'score').map((r) => r.id), ['top', 'mid', 'low'], 'highest score first');
+  assert.deepEqual(rows.map((r) => r.id), ['mid', 'top', 'low'], 'sortRequests does not mutate its input');
+
+  // A public list fetches without the computed column; it must still sort, not
+  // produce NaN comparisons and a scrambled order.
+  const noScore = [row('a'), row('b'), row('c')];
+  assert.equal(sortRequests(noScore, 'score').length, 3, 'missing score does not drop rows');
+
+  const byDistrict = [
+    row('j', { district: 'Jorhat', created_at: '2026-07-31T12:00:00Z' }),
+    row('c', { district: 'Charaideo' }),
+    row('s', { district: 'Sivasagar' }),
+    row('j2', { district: 'Jorhat', created_at: '2026-07-29T12:00:00Z' }),
+  ];
+  assert.deepEqual(
+    sortRequests(byDistrict, 'district').map((r) => r.id),
+    ['c', 'j2', 'j', 's'],
+    'grouped by district, oldest first inside a district',
+  );
+
+  const byPrio = [row('n', { priority: 'needed' }), row('c', { priority: 'critical' }), row('u', { priority: 'urgent' })];
+  assert.deepEqual(sortRequests(byPrio, 'priority').map((r) => r.id), ['c', 'u', 'n'], 'critical before urgent before needed');
+
+  // The existing age sorts must keep working through the new entry point.
+  assert.deepEqual(sortRequests(byDistrict, 'oldest').map((r) => r.id), ['j2', 'c', 's', 'j']);
+  // 'newest' is 'oldest' reversed, so rows sharing a timestamp (c and s) come
+  // back in the opposite order. Long-standing byAge behaviour, pinned here.
+  assert.deepEqual(sortRequests(byDistrict, 'newest').map((r) => r.id), ['j', 's', 'c', 'j2']);
+}
+
+// ── Score bands: the boundaries, which is where an off-by-one hides ──────
+assert.equal(scoreBand(258.6), 'high', 'top of the live range is red');
+assert.equal(scoreBand(200), 'high', '200 is high, not medium');
+assert.equal(scoreBand(199.9), 'medium');
+assert.equal(scoreBand(120), 'medium', '120 is medium, not low');
+assert.equal(scoreBand(119.9), 'low');
+assert.equal(scoreBand(54.1), 'low', 'bottom of the live range is green');
+assert.equal(scoreBand(0), 'low');
+// A heavily-updated row can be pushed negative by the -15 term; it must still
+// land in a band rather than returning undefined and rendering a broken class.
+assert.equal(scoreBand(-30), 'low', 'negative score is still a band');
+assert.equal(scoreBand(null), null, 'a row fetched without the computed column has no band');
+assert.equal(scoreBand(undefined), null);
+
+// Every band a score can land in must have a label, or the badge renders
+// "249.9 · undefined".
+for (const score of [258.6, 200, 199.9, 120, 119.9, 54.1, 0, -30]) {
+  assert.ok(SCORE_BAND_LABEL[scoreBand(score)], `no label for score ${score}`);
+}
+
+// ── Resolved list: newest resolution first, legacy rows included ─────────
+{
+  const rows = [
+    { id: 'old', created_at: '2026-07-20T00:00:00Z', resolved_at: '2026-07-29T00:00:00Z' },
+    { id: 'new', created_at: '2026-07-21T00:00:00Z', resolved_at: '2026-08-01T00:00:00Z' },
+    // Resolved before 0013 added the column: falls back to created_at rather
+    // than sorting to the bottom as epoch zero.
+    { id: 'legacy', created_at: '2026-07-31T00:00:00Z', resolved_at: null },
+  ];
+  assert.equal(resolvedAt(rows[2]), '2026-07-31T00:00:00Z', 'null resolved_at falls back to created_at');
+  assert.deepEqual(byResolvedAt(rows).map((r) => r.id), ['new', 'legacy', 'old'], 'newest resolution first');
+  assert.deepEqual(rows.map((r) => r.id), ['old', 'new', 'legacy'], 'byResolvedAt does not mutate its input');
 }
 
 // ── CSV export: separators and formulas must not escape the cell ─────────

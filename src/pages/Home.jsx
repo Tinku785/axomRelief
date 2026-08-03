@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LangContext';
 import { useReliefData } from '../hooks/useReliefData';
+import { isResolved } from '../utils/status';
 import { requestsToMarkers, helpersToMarkers } from '../utils/mapGeo';
 import { supabaseConfigured } from '../supabaseClient';
 import ReliefMap from '../components/ReliefMap';
@@ -14,6 +15,9 @@ export default function Home() {
   const navigate = useNavigate();
   const { requests, helpers, loading } = useReliefData();
   const [mapOpen, setMapOpen] = useState(false);
+  // Resolved requests are off the map, so they must be off the legend and the
+  // CTA count too - three numbers that disagree is worse than none.
+  const openRequests = requests.filter((r) => !isResolved(r));
 
   // Home shows the whole operating area, so requesters are plain green rather
   // than priority-coloured - priority shading belongs on the rescuer page.
@@ -36,7 +40,7 @@ export default function Home() {
               <div className="map-legend">
                 <span className="map-legend__item">
                   <i className="relief-pin relief-pin--dot" style={{ background: 'var(--green)' }} />
-                  {t.legendRequesters} ({requests.length})
+                  {t.legendRequesters} ({openRequests.length})
                 </span>
                 <span className="map-legend__item">
                   <i className="relief-pin relief-pin--dot" style={{ background: 'var(--orange)' }} />
@@ -69,7 +73,7 @@ export default function Home() {
           {t.seeRescuers} ({helpers.length})
         </button>
         <button className="cta cta-green" onClick={() => navigate('/helping#list')}>
-          {t.seeRequesters} ({requests.length})
+          {t.seeRequesters} ({openRequests.length})
         </button>
       </div>
 

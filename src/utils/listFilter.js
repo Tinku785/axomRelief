@@ -1,7 +1,7 @@
 import { matchesQuery } from './search.js';
 import { matchesWhen } from './time.js';
 import { statusOf } from './status.js';
-import { byAge } from './priority.js';
+import { byAge, sortRequests } from './priority.js';
 
 // The same four lists - public requests, public rescuers, admin requests,
 // admin rescuers - were each growing their own filter chain. One place, so a
@@ -22,7 +22,7 @@ export function isFiltered(f) {
 }
 
 export function filterRequests(rows, f, lang = 0) {
-  return byAge(rows.filter((r) => (
+  return sortRequests(rows.filter((r) => (
     (f.priority === 'All' || r.priority === f.priority)
     && (f.district === 'All' || r.district === f.district)
     && (f.status === 'All' || statusOf(r) === f.status)
