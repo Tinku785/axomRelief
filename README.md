@@ -2,66 +2,86 @@
 
 Flood relief helpline for Assam — "Axom stands together". React (Vite) + Supabase.
 
-Implements the design in `../project/AxomRelief.dc.html` (Claude Design export) pixel-for-pixel:
-green/white with orange call-to-action accents, bilingual English/Assamese toggle,
-district-based location, request/rescuer forms, an illustrated relief map, and an
-admin dashboard — backed by a real Supabase database instead of in-browser state.
+This repository contains a bilingual (English/Assamese) public site to request rescue or register as a rescuer, an illustrated relief map, and an admin dashboard backed by Supabase.
 
-## 1. Install
+Key features
+- Public request form + rescuer registration
+- Admin dashboard (manual admin creation in Supabase)
+- Interactive map with markers (react-leaflet + OpenStreetMap tiles)
+- Client-side anti-spam: honeypot field + Cloudflare Turnstile widget
+- Supabase for database and Auth; RLS controls writes
+
+Quick setup
+1. Clone
+
+```
+git clone https://github.com/Tinku785/axomRelief.git
+cd axomRelief
+```
+
+2. Install
 
 ```
 npm install
 ```
 
-## 2. Set up Supabase
+3. Supabase
+- Create a project at https://supabase.com
+- Run the schema migration: open the SQL editor in your Supabase dashboard and paste the contents of `supabase/migrations/0001_init.sql`, or via the CLI:
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Run the schema migration: open the SQL editor in your Supabase dashboard and paste
-   the contents of `supabase/migrations/0001_init.sql`, or via the CLI:
-   ```
-   supabase link --project-ref <your-project-ref>
-   supabase db push
-   ```
-3. Optional demo data (matches the design prototype's sample requests/helpers/helplines/news):
-   run `supabase/seed.sql` the same way.
-4. Create an admin account manually: Supabase dashboard → Authentication → Users → Add user.
-   There is no public sign-up — this is the only way to get an admin login.
+```
+supabase link --project-ref <your-project-ref>
+supabase db push
+```
 
-## 3. Configure environment variables
+- Optional demo data (matches the design prototype's sample requests/helpers/helplines/news): run `supabase/seed.sql` (or use `supabase/migrations` seed step as needed).
+- Create an admin account manually in Supabase: Dashboard → Authentication → Users → Add user (there is no public admin signup).
+
+4. Environment variables
+
+Copy and edit the example env file:
 
 ```
 cp .env.example .env.local
 ```
 
-Fill in:
-- `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — Settings → API in your Supabase project.
-- `VITE_FORMSPREE_FORM_ID` — from `https://formspree.io/f/<form-id>`, used by the footer's
-  Feedback form.
-- `VITE_TURNSTILE_SITE_KEY` — from the Cloudflare dashboard, used on the request form's bot
-  check. Leave blank in development: it falls back to Cloudflare's public test key, which
-  always passes.
+Fill in the following keys in `.env.local`:
+- VITE_SUPABASE_URL — from Supabase Project → Settings → API
+- VITE_SUPABASE_ANON_KEY — from Supabase Project → Settings → API
+- VITE_FORMSPREE_FORM_ID — Formspree form id (used by footer feedback form)
+- VITE_TURNSTILE_SITE_KEY — Cloudflare Turnstile site key (leave blank in development; app falls back to the public test key)
 
-Without these, the app still runs and renders every screen, but shows a
-"Backend not configured" message wherever it would otherwise read or write data.
+Without the Supabase vars set the app will still render but show "Backend not configured" where it would read/write data.
 
-## 4. Run
+5. Run locally
 
 ```
 npm run dev
 ```
 
-## 5. Deploy
+6. Build / Deploy
 
-Designed to deploy on Vercel (`vercel deploy`) — set the same env vars as project
-Environment Variables in the Vercel dashboard.
+```
+npm run build
+npm run preview
+```
 
-## Notes on scope
+Deploy to Vercel (recommended): set the same environment variables in the Vercel project settings and run `vercel deploy`.
 
-- The relief map (embedded strip + full-screen pan/zoom overlay) is the same hand-drawn
-  SVG illustration used in the design prototype, not a real Leaflet/OpenStreetMap map —
-  this matches the final design direction from the Claude Design chat transcript rather
-  than the earlier (superseded) build-prompts.md, which called for real map tiles.
-- Anti-spam: both public write forms (request + rescuer registration) have an off-screen
-  honeypot field, and the request form has a live Cloudflare Turnstile widget. None of this
-  is re-enforced server-side yet (no Edge Function) — Supabase RLS controls what each form
-  can write, but the honeypot/Turnstile checks themselves are client-side only.
+Important notes
+- Map tiles: OpenStreetMap tiles are used (no key required). OSM requires attribution — the app sets this automatically.
+- Anti-spam: honeypot + Turnstile exist client-side; there is currently no server-side Edge Function enforcement in this repo (RLS still governs database writes).
+- Admin access: admin accounts must be created via Supabase dashboard and are the only way to access /admin.
+
+Where to look in the code
+- src/main.jsx — app bootstrap and providers
+- src/App.jsx — routes and top-level shell
+- src/supabaseClient.js — supabase client wiring and placeholder fallback
+- src/components/ReliefMap.jsx — map logic (fit-to-markers, focus, popup UX, copy coords)
+- src/pages/RequestForm.jsx — public request form
+- src/pages/AdminDashboard.jsx — admin tools
+- supabase/ — migration and seed SQL
+
+Contact / Contributing
+- If you contribute, follow the existing code style (Vite + React) and run `npm run lint`.
+
